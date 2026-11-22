@@ -119,7 +119,7 @@
         .status-select-none { color: var(--n-text-light); }
 
         .comment-icon {
-            font-size: 0.8rem; color: var(--n-blue); cursor: pointer; margin-left: 4px;
+            font-size: 0.9rem; color: var(--n-blue); cursor: pointer; margin-left: 4px;
             transition: color 0.2s;
         }
         .comment-icon:hover { color: #1a6bc4; }
@@ -776,18 +776,17 @@
     </div>
 </div>
 
-<!-- МОДАЛКА СТАТУСА -->
+<!-- МОДАЛКА СТАТУСА И ЧАСОВ -->
 <div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-sm">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-calendar-check"></i> Комментарий к статусу</h5>
+                <h5 class="modal-title"><i class="bi bi-clock-history"></i> Отработка часов</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="statusManagerKey">
                 <input type="hidden" id="statusDate">
-                <input type="hidden" id="statusTypeHidden">
                 
                 <div class="mb-3">
                     <label class="form-label fw-bold text-muted small">Сотрудник</label>
@@ -798,24 +797,24 @@
                     <input type="text" id="statusDateDisplay" class="form-control" readonly style="background-color: var(--bg-sidebar);">
                 </div>
                 <div class="mb-3">
-                    <label class="form-label fw-bold text-muted small">Статус</label>
-                    <div class="form-control" id="statusTypeDisplay" readonly style="background-color: var(--bg-sidebar);"></div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold text-muted small">Комментарий</label>
-                    <input type="text" id="statusComment" class="form-control form-control-sm" placeholder="Детали (по желанию)">
+                    <label class="form-label fw-bold text-muted small">Текущий статус</label>
+                    <div class="form-control" id="statusTypeDisplay" readonly style="background-color: var(--bg-sidebar);">Не выбран</div>
                 </div>
                 
-                <!-- НОВЫЙ БЛОК ДЛЯ ПРОПУЩЕННЫХ ЧАСОВ -->
+                <!-- БЛОК ДЛЯ ПРОПУЩЕННЫХ ЧАСОВ -->
                 <div class="mb-3 form-check">
                     <input class="form-check-input" type="checkbox" id="statusFinishedEarly" onchange="document.getElementById('missedHoursBlock').style.display = this.checked ? 'block' : 'none';">
-                    <label class="form-check-label" for="statusFinishedEarly">Завершил рабочий день заранее</label>
+                    <label class="form-check-label fw-semibold text-danger" for="statusFinishedEarly">Завершил день заранее</label>
                 </div>
                 <div class="mb-3" id="missedHoursBlock" style="display:none;">
                     <label class="form-label fw-bold text-muted small">Пропущено часов</label>
                     <input type="number" id="statusMissedHours" class="form-control form-control-sm" min="0" step="0.5" placeholder="Например: 2.5">
                 </div>
-                <!-- КОНЕЦ НОВОГО БЛОКА -->
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-muted small">Комментарий</label>
+                    <input type="text" id="statusComment" class="form-control form-control-sm" placeholder="Детали (по желанию)">
+                </div>
 
             </div>
             <div class="modal-footer">
@@ -906,7 +905,7 @@ const DIRECTIONS = ['БП', 'Битрикс24', 'Отраслевой рег у�
 let clients = [];
 let pendingDropMove = null;
 let currentManager = 'ramil';
-let statusesData = []; // Для хранения статусов с сервера
+let statusesData = []; 
 
 /* ====================================================================
    СИСТЕМА СТАТУСОВ И ЧАСОВ
@@ -948,6 +947,28 @@ function updateMissedHoursDisplay() {
     }
 }
 
+// Инлайн обновление статуса (прямо в таблице)
+async function updateStatusInline(managerKey, dateStr, newStatus) {
+    const existing = statusesData.find(s => s.manager_key === managerKey && s.date === dateStr);
+    const missed = existing ? existing.missed_hours : 0;
+    const comment = existing ? existing.comment : '';
+
+    const { error } = await supabaseClient.from('manager_statuses').upsert({
+        manager_key: managerKey,
+        date: dateStr,
+        status_type: newStatus,
+        comment: comment,
+        missed_hours: missed
+    }, { onConflict: 'manager_key,date' });
+
+    if (error) {
+        alert('Ошибка сохранения: ' + error.message);
+    } else {
+        await loadStatuses();
+        renderWelcomeStatuses();
+    }
+}
+
 function openStatusModal(managerKey, dateStr) {
     document.getElementById('statusManagerKey').value = managerKey;
     document.getElementById('statusManagerName').value = managerNames[managerKey] || managerKey;
@@ -956,19 +977,16 @@ function openStatusModal(managerKey, dateStr) {
     const dateObj = new Date(dateStr);
     document.getElementById('statusDateDisplay').value = dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 
-    // Ищем существующий статус
     const existing = statusesData.find(s => s.manager_key === managerKey && s.date === dateStr);
     
     if (existing) {
-        document.getElementById('statusTypeHidden').value = existing.status_type || '';
-        document.getElementById('statusTypeDisplay').textContent = existing.status_type || '—';
+        document.getElementById('statusTypeDisplay').textContent = existing.status_type || 'Не выбран';
         document.getElementById('statusComment').value = existing.comment || '';
         document.getElementById('statusFinishedEarly').checked = (existing.missed_hours > 0);
         document.getElementById('statusMissedHours').value = existing.missed_hours > 0 ? existing.missed_hours : '';
         document.getElementById('missedHoursBlock').style.display = existing.missed_hours > 0 ? 'block' : 'none';
     } else {
-        document.getElementById('statusTypeHidden').value = '';
-        document.getElementById('statusTypeDisplay').textContent = 'В офисе'; // Дефолт
+        document.getElementById('statusTypeDisplay').textContent = 'Не выбран';
         document.getElementById('statusComment').value = '';
         document.getElementById('statusFinishedEarly').checked = false;
         document.getElementById('statusMissedHours').value = '';
@@ -981,16 +999,18 @@ function openStatusModal(managerKey, dateStr) {
 async function saveStatusComment() {
     const managerKey = document.getElementById('statusManagerKey').value;
     const dateStr = document.getElementById('statusDate').value;
-    const type = document.getElementById('statusTypeDisplay').textContent;
+    const type = document.getElementById('statusTypeDisplay').textContent; 
     const comment = document.getElementById('statusComment').value;
     
     const finishedEarly = document.getElementById('statusFinishedEarly').checked;
     const missedHours = finishedEarly ? (parseFloat(document.getElementById('statusMissedHours').value) || 0) : 0;
 
+    const finalType = type === 'Не выбран' ? '' : type;
+
     const { error } = await supabaseClient.from('manager_statuses').upsert({
         manager_key: managerKey,
         date: dateStr,
-        status_type: type,
+        status_type: finalType,
         comment: comment,
         missed_hours: missedHours
     }, { onConflict: 'manager_key,date' });
@@ -1010,17 +1030,15 @@ function renderWelcomeStatuses() {
 
     const now = new Date();
     const year = now.getFullYear();
-    const month = now.getMonth(); // 0-11
+    const month = now.getMonth(); 
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     
-    // Заголовок таблицы
     let html = '<thead><tr><th>Дата</th>';
     for (let m in managerNames) {
         html += `<th>${managerNames[m]}</th>`;
     }
     html += '</tr></thead><tbody>';
 
-    // Тело таблицы
     for (let d = 1; d <= daysInMonth; d++) {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
         const dateObj = new Date(year, month, d);
@@ -1036,19 +1054,30 @@ function renderWelcomeStatuses() {
             const missed = status.missed_hours || 0;
             
             let bgClass = 'status-select-none';
-            let displayText = '—';
-            if (statusType === 'В офисе') { bgClass = 'status-select-office'; displayText = 'В офисе'; }
-            else if (statusType === 'Отпуск') { bgClass = 'status-select-vacation'; displayText = 'Отпуск'; }
-            else if (statusType === 'Больничный') { bgClass = 'status-select-sick'; displayText = 'Больничный'; }
-            else if (statusType === 'Удаленка') { bgClass = 'status-select-remote'; displayText = 'Удаленка'; }
-            else if (statusType === 'Неоплачиваемый') { bgClass = 'status-select-unpaid'; displayText = 'Неоплачиваемый'; }
+            if (statusType === 'В офисе') bgClass = 'status-select-office';
+            else if (statusType === 'На удаленке') bgClass = 'status-select-remote';
+            else if (statusType === 'Отпуск') bgClass = 'status-select-vacation';
+            else if (statusType === 'Больничный') bgClass = 'status-select-sick';
+            else if (statusType === 'За свой счет') bgClass = 'status-select-unpaid';
             
+            let optionsHtml = `
+                <option value="">—</option>
+                <option value="В офисе" ${statusType === 'В офисе' ? 'selected' : ''}>В офисе</option>
+                <option value="На удаленке" ${statusType === 'На удаленке' ? 'selected' : ''}>На удаленке</option>
+                <option value="Отпуск" ${statusType === 'Отпуск' ? 'selected' : ''}>Отпуск</option>
+                <option value="Больничный" ${statusType === 'Больничный' ? 'selected' : ''}>Больничный</option>
+                <option value="За свой счет" ${statusType === 'За свой счет' ? 'selected' : ''}>За свой счет</option>
+            `;
+
             let missedBadge = missed > 0 ? `<span class="badge bg-danger ms-1" title="Пропущено часов">-${missed}ч</span>` : '';
 
             html += `<td>
                 <div class="d-flex align-items-center justify-content-center gap-1">
-                    <span class="badge ${bgClass} p-2 w-100" style="font-size: 0.8rem;">${displayText} ${missedBadge}</span>
-                    <i class="bi bi-pencil-square comment-icon" onclick="openStatusModal('${m}', '${dateStr}')"></i>
+                    <select class="inline-status-select ${bgClass}" onchange="updateStatusInline('${m}', '${dateStr}', this.value)">
+                        ${optionsHtml}
+                    </select>
+                    ${missedBadge}
+                    <i class="bi bi-pencil-square comment-icon" onclick="openStatusModal('${m}', '${dateStr}')" title="Указать пропущенные часы / Комментарий"></i>
                 </div>
             </td>`;
         }
@@ -1079,22 +1108,18 @@ function goHome() {
 function switchManager(manager) {
     currentManager = manager;
     
-    // Подсветка кнопки меню
     document.querySelectorAll('.manager-btn').forEach(btn => btn.classList.remove('active'));
     const activeBtn = document.getElementById('btn-' + manager);
     if (activeBtn) activeBtn.classList.add('active');
 
-    // Переключение контента
     if (manager === 'ramil') {
         document.getElementById('ramilCrmWrapper').style.display = 'block';
         document.getElementById('supportWrapper').style.display = 'none';
-        loadData(); // Загружаем клиентов
+        loadData(); 
     } else {
         document.getElementById('ramilCrmWrapper').style.display = 'none';
         document.getElementById('supportWrapper').style.display = 'block';
         document.getElementById('currentManagerTitle').textContent = `Сопровождение: ${managerNames[manager]}`;
-        // Заглушка для загрузки данных сопровождения, если она есть
-        // loadSupportData(); 
     }
     
     updateMissedHoursDisplay();
@@ -1435,7 +1460,6 @@ function renderBoardAll() {
     });
 }
 
-// Универсальная отрисовка таблиц (table и m1)
 function renderSimpleTable(boardType) {
     const tbodyId = boardType === 'table' ? 'tableBody' : 'm1TableBody';
     const tbody = document.getElementById(tbodyId);
