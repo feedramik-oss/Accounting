@@ -135,7 +135,7 @@
         .manager-btn.active { background-color: #e6e6e6; font-weight: 500; }
 
         /* MAIN CONTENT */
-        .main-content { flex: 1; overflow-y: auto; min-width: 0; }
+        .main-content { flex: 1; overflow-y: auto; min-width: 0; position: relative; }
 
         /* SUPPORT VIEW */
         #supportWrapper { padding: 40px 60px; font-size: 14px; color: var(--text-main); }
@@ -250,6 +250,19 @@
 
         /* Скролл для календаря */
         .calendar-container { max-height: 500px; overflow-y: auto; border: 1px solid var(--n-border); border-radius: 8px; }
+
+        /* Блок пропущенных часов */
+        .missed-hours-footer {
+            margin-top: 50px;
+            padding: 15px;
+            background: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            text-align: center;
+            font-size: 16px;
+            color: var(--text-main);
+            box-shadow: var(--n-shadow);
+        }
     </style>
 </head>
 <body>
@@ -304,10 +317,10 @@
     </div>
     <div class="department-title">Отдел сопровождения</div>
     <div class="sidebar-title">Команда</div>
-    <div class="manager-btn" onclick="switchManager('ramil')">👤 Рамиль</div>
-    <div class="manager-btn" onclick="switchManager('svetlana')">👤 Светлана</div>
-    <div class="manager-btn" onclick="switchManager('diana')">👤 Диана</div>
-    <div class="manager-btn" onclick="switchManager('anna')">👤 Анна</div>
+    <div class="manager-btn" id="btn-ramil" onclick="switchManager('ramil')">👤 Рамиль</div>
+    <div class="manager-btn" id="btn-svetlana" onclick="switchManager('svetlana')">👤 Светлана</div>
+    <div class="manager-btn" id="btn-diana" onclick="switchManager('diana')">👤 Диана</div>
+    <div class="manager-btn" id="btn-anna" onclick="switchManager('anna')">👤 Анна</div>
 </div>
 
 <!-- MAIN CONTENT -->
@@ -373,7 +386,7 @@
                 </div>
 
                 <div class="row g-3 mb-4">
-                    <div class="col-12 col-md-6 col-lg-3">
+                    <div class="col-12 col-md-6 col-lg-4">
                         <div class="card menu-card h-100" onclick="showPage('boardMain')">
                             <div class="card-body d-flex flex-column h-100">
                                 <div class="d-flex justify-content-between align-items-start mb-2">
@@ -385,7 +398,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-12 col-md-6 col-lg-3">
+                    <div class="col-12 col-md-6 col-lg-4">
                         <div class="card menu-card h-100" onclick="showPage('boardKey')">
                             <div class="card-body d-flex flex-column h-100">
                                 <div class="d-flex justify-content-between align-items-start mb-2">
@@ -397,19 +410,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-12 col-md-6 col-lg-3">
-                        <div class="card menu-card h-100" onclick="showPage('boardRevenue')">
-                            <div class="card-body d-flex flex-column h-100">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <h5 class="card-title fw-semibold fs-6"><i class="bi bi-table text-secondary"></i> База (Excel)</h5>
-                                    <span class="badge bg-secondary rounded-pill" id="revenueClientCount">0</span>
-                                </div>
-                                <p class="card-text text-muted small flex-grow-1">Импортированы из Excel (Таблица)</p>
-                                <div class="text-primary small fw-semibold mt-2">Перейти в базу &rarr;</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-12 col-md-6 col-lg-3">
+                    <div class="col-12 col-md-6 col-lg-4">
                         <div class="card menu-card h-100" onclick="showPage('boardTable')">
                             <div class="card-body d-flex flex-column h-100">
                                 <div class="d-flex justify-content-between align-items-start mb-2">
@@ -417,6 +418,18 @@
                                     <span class="badge bg-secondary rounded-pill" id="tableClientCount">0</span>
                                 </div>
                                 <p class="card-text text-muted small flex-grow-1">Простая таблица для ручного ввода</p>
+                                <div class="text-primary small fw-semibold mt-2">Перейти в таблицу &rarr;</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-12 col-md-6 col-lg-4">
+                        <div class="card menu-card h-100" onclick="showPage('boardM1')">
+                            <div class="card-body d-flex flex-column h-100">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h5 class="card-title fw-semibold fs-6"><i class="bi bi-file-earmark-text text-secondary"></i> Отработка приказа М-1</h5>
+                                    <span class="badge bg-secondary rounded-pill" id="m1ClientCount">0</span>
+                                </div>
+                                <p class="card-text text-muted small flex-grow-1">Отдельная система по клиентам</p>
                                 <div class="text-primary small fw-semibold mt-2">Перейти в таблицу &rarr;</div>
                             </div>
                         </div>
@@ -463,6 +476,11 @@
                         <div class="kanban-board" id="kanban-all"></div>
                     </div>
                 </div>
+
+                <!-- Блок пропущенных часов -->
+                <div class="missed-hours-footer" id="missedHoursDisplay">
+                    <i class="bi bi-clock-history"></i> Пропущено часов в этом рабочем месяце: <span class="fw-bold text-danger" id="missedHoursValue">0</span> ч.
+                </div>
             </div>
         </div>
 
@@ -500,41 +518,6 @@
             </div>
         </div>
 
-        <!-- БАЗА КЛИЕНТОВ (ТАБЛИЦА EXCEL) -->
-        <div id="boardRevenue" class="page">
-            <div class="container-fluid py-4 px-4">
-                <header class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
-                    <div class="d-flex align-items-center gap-3">
-                        <button class="btn btn-outline-secondary btn-sm" onclick="showPage('mainMenu')"><i class="bi bi-arrow-left"></i></button>
-                        <h2 class="h5 mb-0 fw-bold">База клиентов (Выручка)</h2>
-                    </div>
-                    <div class="d-flex flex-wrap gap-2 align-items-center">
-                        <button class="btn btn-outline-primary btn-sm" onclick="openImportModal()"><i class="bi bi-file-earmark-excel"></i> Импорт из Excel</button>
-                    </div>
-                </header>
-                <div class="stat-card p-3">
-                    <div class="table-responsive">
-                        <table class="notion-table" style="min-width: 1200px;">
-                            <thead>
-                                <tr>
-                                    <th style="width: 20%;">Название компании</th>
-                                    <th style="width: 15%;">Сфера деятельности</th>
-                                    <th style="width: 8%;">Сотрудники</th>
-                                    <th style="width: 10%;">Оборот (тыс. ₽)</th>
-                                    <th style="width: 15%;">Комментарий</th>
-                                    <th style="width: 10%;">ИНН</th>
-                                    <th style="width: 10%;">Телефон</th>
-                                    <th style="width: 10%;">Email</th>
-                                    <th style="width: 120px; text-align: center;">Действия</th>
-                                </tr>
-                            </thead>
-                            <tbody id="revenueTableBody"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <!-- ПРОСТАЯ ТАБЛИЦА (ИНН) -->
         <div id="boardTable" class="page">
             <div class="container-fluid py-4 px-4">
@@ -545,13 +528,10 @@
                     </div>
                     <div class="d-flex flex-wrap gap-2 align-items-center">
                         <button class="btn btn-outline-primary btn-sm" onclick="document.getElementById('tableExcelFileInput').click()"><i class="bi bi-file-earmark-excel"></i> Импорт из Excel</button>
-                        <input type="file" id="tableExcelFileInput" accept=".xlsx, .xls" style="display: none;" onchange="importTableFromExcel(event)">
-                        <button class="btn btn-outline-success btn-sm" onclick="exportTableToExcel()"><i class="bi bi-download"></i> Экспорт в Excel</button>
-                        
-                        <!-- НОВАЯ КНОПКА УДАЛЕНИЯ ВСЕХ -->
-                        <button class="btn btn-outline-danger btn-sm" onclick="deleteAllTableClients()"><i class="bi bi-trash"></i> Удалить всех</button>
-
-                        <button class="btn btn-primary btn-sm" onclick="addTableRow()"><i class="bi bi-plus-lg"></i> Добавить строку</button>
+                        <input type="file" id="tableExcelFileInput" accept=".xlsx, .xls" style="display: none;" onchange="importTableFromExcel(event, 'table')">
+                        <button class="btn btn-outline-success btn-sm" onclick="exportTableToExcel('table')"><i class="bi bi-download"></i> Экспорт в Excel</button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteAllTableClients('table')"><i class="bi bi-trash"></i> Удалить всех</button>
+                        <button class="btn btn-primary btn-sm" onclick="addTableRow('table')"><i class="bi bi-plus-lg"></i> Добавить строку</button>
                     </div>
                 </header>
                 <div class="stat-card p-3">
@@ -568,6 +548,42 @@
                                 </tr>
                             </thead>
                             <tbody id="tableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ТАБЛИЦА (ОТРАБОТКА ПРИКАЗА М-1) -->
+        <div id="boardM1" class="page">
+            <div class="container-fluid py-4 px-4">
+                <header class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-3">
+                        <button class="btn btn-outline-secondary btn-sm" onclick="showPage('mainMenu')"><i class="bi bi-arrow-left"></i></button>
+                        <h2 class="h5 mb-0 fw-bold">Отработка приказа М-1</h2>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <button class="btn btn-outline-primary btn-sm" onclick="document.getElementById('m1ExcelFileInput').click()"><i class="bi bi-file-earmark-excel"></i> Импорт из Excel</button>
+                        <input type="file" id="m1ExcelFileInput" accept=".xlsx, .xls" style="display: none;" onchange="importTableFromExcel(event, 'm1')">
+                        <button class="btn btn-outline-success btn-sm" onclick="exportTableToExcel('m1')"><i class="bi bi-download"></i> Экспорт в Excel</button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="deleteAllTableClients('m1')"><i class="bi bi-trash"></i> Удалить всех</button>
+                        <button class="btn btn-primary btn-sm" onclick="addTableRow('m1')"><i class="bi bi-plus-lg"></i> Добавить строку</button>
+                    </div>
+                </header>
+                <div class="stat-card p-3">
+                    <div class="table-responsive">
+                        <table class="notion-table" style="min-width: 1000px;">
+                            <thead>
+                                <tr>
+                                    <th style="width: 20%;">Название клиента</th>
+                                    <th style="width: 12%;">ИНН</th>
+                                    <th style="width: 18%;">Контактное лицо</th>
+                                    <th style="width: 20%;">Комментарий</th>
+                                    <th style="width: 15%;">Статус</th>
+                                    <th style="width: 120px; text-align: center;">Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody id="m1TableBody"></tbody>
                         </table>
                     </div>
                 </div>
@@ -660,6 +676,11 @@
             <tbody id="reportBody"></tbody>
         </table>
         <button class="add-btn" onclick="addReportRow()">＋ Добавить отчет за день</button>
+
+        <!-- Блок пропущенных часов для отдела сопровождения -->
+        <div class="missed-hours-footer" id="missedHoursDisplaySupport">
+            <i class="bi bi-clock-history"></i> Пропущено часов в этом рабочем месяце: <span class="fw-bold text-danger" id="missedHoursValueSupport">0</span> ч.
+        </div>
     </div>
 </div>
 
@@ -699,8 +720,8 @@
                             <option value="auto">Автоматически (по направлению)</option>
                             <option value="main">Текущие клиенты</option>
                             <option value="key">Клиенты Pix оператор</option>
-                            <option value="revenue">База клиентов (Excel)</option>
                             <option value="table">Таблица клиентов (ИНН)</option>
+                            <option value="m1">Отработка приказа М-1</option>
                         </select>
                     </div>
                     <div class="col-md-6">
@@ -784,6 +805,18 @@
                     <label class="form-label fw-bold text-muted small">Комментарий</label>
                     <input type="text" id="statusComment" class="form-control form-control-sm" placeholder="Детали (по желанию)">
                 </div>
+                
+                <!-- НОВЫЙ БЛОК ДЛЯ ПРОПУЩЕННЫХ ЧАСОВ -->
+                <div class="mb-3 form-check">
+                    <input class="form-check-input" type="checkbox" id="statusFinishedEarly" onchange="document.getElementById('missedHoursBlock').style.display = this.checked ? 'block' : 'none';">
+                    <label class="form-check-label" for="statusFinishedEarly">Завершил рабочий день заранее</label>
+                </div>
+                <div class="mb-3" id="missedHoursBlock" style="display:none;">
+                    <label class="form-label fw-bold text-muted small">Пропущено часов</label>
+                    <input type="number" id="statusMissedHours" class="form-control form-control-sm" min="0" step="0.5" placeholder="Например: 2.5">
+                </div>
+                <!-- КОНЕЦ НОВОГО БЛОКА -->
+
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Отмена</button>
@@ -840,15 +873,6 @@
                         <button class="btn btn-primary btn-sm" onclick="importFromExcel()">Загрузить</button>
                     </div>
                 </div>
-                <div class="card mb-3 shadow-none border">
-                    <div class="card-body">
-                        <h6 class="fw-bold mb-2">Импорт с выручкой (База)</h6>
-                        <div class="alert alert-light border text-muted small mb-3">
-                            Файл с колонками <b>Название компании</b> | <b>Сфера деятельности</b> | <b>Кол-во сотрудников</b> | <b>Годовой оборот(тыс р)</b> и т.д.
-                        </div>
-                        <button class="btn btn-outline-primary btn-sm" onclick="importRevenueFromExcel()">Загрузить</button>
-                    </div>
-                </div>
                 <div id="importResult" class="mt-3"></div>
             </div>
             <div class="modal-footer">
@@ -871,7 +895,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /* ====================================================================
-   ЧАСТЬ 1 — CRM-СИСТЕМА РАМИЛЯ (Notion Kanban)
+   ПЕРЕМЕННЫЕ И КОНСТАНТЫ
    ==================================================================== */
 const STAGES_MAIN = ['Оценка', 'Согласование оплаты', 'Оплачено (в работе)', 'Выпущена реализация', 'Реализация подписана', 'Отвал'];
 const STAGES_KEY = ['В процессе привлечения', 'Направлено приглашение', 'Регистрация', 'Были на интенсиве', 'Встреча лично', 'КП', 'Договор', 'Оплата', 'Внедрение', 'Проработан', 'Отвал'];
@@ -881,19 +905,221 @@ const DIRECTIONS = ['БП', 'Битрикс24', 'Отраслевой рег у�
 
 let clients = [];
 let pendingDropMove = null;
+let currentManager = 'ramil';
+let statusesData = []; // Для хранения статусов с сервера
 
-function getStages(boardType) { 
-    if (boardType === 'revenue') return STAGES_KEY;
-    return boardType === 'main' || boardType === 'table' ? STAGES_MAIN : STAGES_KEY; 
+/* ====================================================================
+   СИСТЕМА СТАТУСОВ И ЧАСОВ
+   ==================================================================== */
+const managerNames = {
+    'ramil': 'Рамиль',
+    'svetlana': 'Светлана',
+    'diana': 'Диана',
+    'anna': 'Анна'
+};
+
+async function loadStatuses() {
+    const { data, error } = await supabaseClient.from('manager_statuses').select('*');
+    if (!error && data) {
+        statusesData = data;
+    } else {
+        console.warn('Таблица manager_statuses еще не создана или пуста.');
+        statusesData = [];
+    }
+    updateMissedHoursDisplay();
 }
-function isPaidStage(client) { return client.boardType === 'main' ? (client.stage >= 2 && client.stage !== 5) : (client.stage >= 7 && client.stage !== 10); }
+
+function updateMissedHoursDisplay() {
+    const now = new Date();
+    const currentMonthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`; // YYYY-MM
+    
+    let missed = 0;
+    if (statusesData) {
+        const managerStatuses = statusesData.filter(s => s.manager_key === currentManager && s.date.startsWith(currentMonthStr));
+        missed = managerStatuses.reduce((sum, s) => sum + (Number(s.missed_hours) || 0), 0);
+    }
+
+    if (currentManager === 'ramil') {
+        const el = document.getElementById('missedHoursValue');
+        if (el) el.textContent = missed;
+    } else {
+        const el = document.getElementById('missedHoursValueSupport');
+        if (el) el.textContent = missed;
+    }
+}
+
+function openStatusModal(managerKey, dateStr) {
+    document.getElementById('statusManagerKey').value = managerKey;
+    document.getElementById('statusManagerName').value = managerNames[managerKey] || managerKey;
+    document.getElementById('statusDate').value = dateStr;
+    
+    const dateObj = new Date(dateStr);
+    document.getElementById('statusDateDisplay').value = dateObj.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    // Ищем существующий статус
+    const existing = statusesData.find(s => s.manager_key === managerKey && s.date === dateStr);
+    
+    if (existing) {
+        document.getElementById('statusTypeHidden').value = existing.status_type || '';
+        document.getElementById('statusTypeDisplay').textContent = existing.status_type || '—';
+        document.getElementById('statusComment').value = existing.comment || '';
+        document.getElementById('statusFinishedEarly').checked = (existing.missed_hours > 0);
+        document.getElementById('statusMissedHours').value = existing.missed_hours > 0 ? existing.missed_hours : '';
+        document.getElementById('missedHoursBlock').style.display = existing.missed_hours > 0 ? 'block' : 'none';
+    } else {
+        document.getElementById('statusTypeHidden').value = '';
+        document.getElementById('statusTypeDisplay').textContent = 'В офисе'; // Дефолт
+        document.getElementById('statusComment').value = '';
+        document.getElementById('statusFinishedEarly').checked = false;
+        document.getElementById('statusMissedHours').value = '';
+        document.getElementById('missedHoursBlock').style.display = 'none';
+    }
+    
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('statusModal')).show();
+}
+
+async function saveStatusComment() {
+    const managerKey = document.getElementById('statusManagerKey').value;
+    const dateStr = document.getElementById('statusDate').value;
+    const type = document.getElementById('statusTypeDisplay').textContent;
+    const comment = document.getElementById('statusComment').value;
+    
+    const finishedEarly = document.getElementById('statusFinishedEarly').checked;
+    const missedHours = finishedEarly ? (parseFloat(document.getElementById('statusMissedHours').value) || 0) : 0;
+
+    const { error } = await supabaseClient.from('manager_statuses').upsert({
+        manager_key: managerKey,
+        date: dateStr,
+        status_type: type,
+        comment: comment,
+        missed_hours: missedHours
+    }, { onConflict: 'manager_key,date' });
+
+    if (error) {
+        alert('Ошибка сохранения: ' + error.message);
+    } else {
+        bootstrap.Modal.getInstance(document.getElementById('statusModal')).hide();
+        await loadStatuses();
+        renderWelcomeStatuses();
+    }
+}
+
+function renderWelcomeStatuses() {
+    const table = document.getElementById('teamStatusCalendar');
+    if (!table) return;
+
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth(); // 0-11
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    
+    // Заголовок таблицы
+    let html = '<thead><tr><th>Дата</th>';
+    for (let m in managerNames) {
+        html += `<th>${managerNames[m]}</th>`;
+    }
+    html += '</tr></thead><tbody>';
+
+    // Тело таблицы
+    for (let d = 1; d <= daysInMonth; d++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const dateObj = new Date(year, month, d);
+        const dayOfWeek = dateObj.getDay();
+        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+        const rowClass = isWeekend ? 'weekend-row' : '';
+        
+        html += `<tr class="${rowClass}"><td class="date-col">${d} ${DAY_NAMES[dayOfWeek]}</td>`;
+        
+        for (let m in managerNames) {
+            const status = statusesData.find(s => s.manager_key === m && s.date === dateStr) || {};
+            const statusType = status.status_type || '';
+            const missed = status.missed_hours || 0;
+            
+            let bgClass = 'status-select-none';
+            let displayText = '—';
+            if (statusType === 'В офисе') { bgClass = 'status-select-office'; displayText = 'В офисе'; }
+            else if (statusType === 'Отпуск') { bgClass = 'status-select-vacation'; displayText = 'Отпуск'; }
+            else if (statusType === 'Больничный') { bgClass = 'status-select-sick'; displayText = 'Больничный'; }
+            else if (statusType === 'Удаленка') { bgClass = 'status-select-remote'; displayText = 'Удаленка'; }
+            else if (statusType === 'Неоплачиваемый') { bgClass = 'status-select-unpaid'; displayText = 'Неоплачиваемый'; }
+            
+            let missedBadge = missed > 0 ? `<span class="badge bg-danger ms-1" title="Пропущено часов">-${missed}ч</span>` : '';
+
+            html += `<td>
+                <div class="d-flex align-items-center justify-content-center gap-1">
+                    <span class="badge ${bgClass} p-2 w-100" style="font-size: 0.8rem;">${displayText} ${missedBadge}</span>
+                    <i class="bi bi-pencil-square comment-icon" onclick="openStatusModal('${m}', '${dateStr}')"></i>
+                </div>
+            </td>`;
+        }
+        html += '</tr>';
+    }
+    html += '</tbody>';
+    table.innerHTML = html;
+}
+
+/* ====================================================================
+   НАВИГАЦИЯ И СИСТЕМНЫЕ ФУНКЦИИ
+   ==================================================================== */
+function enterSystem(manager) {
+    currentManager = manager;
+    document.getElementById('welcomeScreen').style.display = 'none';
+    document.querySelector('.sidebar').style.display = 'flex';
+    document.getElementById('mainContent').style.display = 'block';
+    switchManager(manager);
+}
+
+function goHome() {
+    document.getElementById('welcomeScreen').style.display = 'flex';
+    document.querySelector('.sidebar').style.display = 'none';
+    document.getElementById('mainContent').style.display = 'none';
+    loadStatuses().then(renderWelcomeStatuses);
+}
+
+function switchManager(manager) {
+    currentManager = manager;
+    
+    // Подсветка кнопки меню
+    document.querySelectorAll('.manager-btn').forEach(btn => btn.classList.remove('active'));
+    const activeBtn = document.getElementById('btn-' + manager);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    // Переключение контента
+    if (manager === 'ramil') {
+        document.getElementById('ramilCrmWrapper').style.display = 'block';
+        document.getElementById('supportWrapper').style.display = 'none';
+        loadData(); // Загружаем клиентов
+    } else {
+        document.getElementById('ramilCrmWrapper').style.display = 'none';
+        document.getElementById('supportWrapper').style.display = 'block';
+        document.getElementById('currentManagerTitle').textContent = `Сопровождение: ${managerNames[manager]}`;
+        // Заглушка для загрузки данных сопровождения, если она есть
+        // loadSupportData(); 
+    }
+    
+    updateMissedHoursDisplay();
+}
+
+/* ====================================================================
+   CRM РАМИЛЯ (КЛИЕНТЫ)
+   ==================================================================== */
+function getStages(boardType) { 
+    if (boardType === 'm1' || boardType === 'table') return STAGES_MAIN; 
+    return boardType === 'main' ? STAGES_MAIN : STAGES_KEY; 
+}
+
+function isPaidStage(client) { 
+    if (client.boardType === 'table' || client.boardType === 'm1') return false;
+    return client.boardType === 'main' ? (client.stage >= 2 && client.stage !== 5) : (client.stage >= 7 && client.stage !== 10); 
+}
+
 function isActive(client) { 
-    if (client.boardType === 'table' || client.boardType === 'revenue') return false;
+    if (client.boardType === 'table' || client.boardType === 'm1') return false;
     return client.boardType === 'main' ? (client.stage !== 4 && client.stage !== 5) : (client.stage !== 9 && client.stage !== 10); 
 }
 
 function getUnifiedStage(client) {
-    if (client.boardType === 'revenue' || client.boardType === 'table') return -1;
+    if (client.boardType === 'table' || client.boardType === 'm1') return -1;
     if (client.boardType === 'main') {
         if (client.stage === 0) return 0;
         if (client.stage === 1) return 5;
@@ -904,6 +1130,7 @@ function getUnifiedStage(client) {
     }
     return client.stage;
 }
+
 function getMappedStage(client, unifiedStage) {
     if (client.boardType === 'main') {
         if (unifiedStage <= 4) return 0;
@@ -914,25 +1141,6 @@ function getMappedStage(client, unifiedStage) {
         return 5;
     }
     return unifiedStage;
-}
-
-function getRevenueData(client) {
-    let sphere = '', employees = '', inn = '', comment = '', phone = '', email = '';
-    if (client.notes && client.notes.startsWith('{')) {
-        try {
-            const obj = JSON.parse(client.notes);
-            sphere = obj.sphere || ''; employees = obj.employees || ''; inn = obj.inn || ''; comment = obj.comment || '';
-        } catch(e) {}
-    } else if (client.notes) {
-        const sMatch = client.notes.match(/Сфера:\s*(.*)/); const eMatch = client.notes.match(/Сотрудников:\s*(.*)/); const iMatch = client.notes.match(/ИНН:\s*(.*)/);
-        if (sMatch) sphere = sMatch[1].trim(); if (eMatch) employees = eMatch[1].trim(); if (iMatch) inn = iMatch[1].trim();
-        comment = client.notes.replace(/Сфера:.*\n?/g, '').replace(/Сотрудников:.*\n?/g, '').replace(/ИНН:.*\n?/g, '').replace(/Адрес:.*\n?/g, '').trim();
-    }
-    if (client.contact) {
-        const parts = client.contact.split(',').map(p => p.trim());
-        phone = parts[0] || ''; email = parts[1] || '';
-    }
-    return { sphere, employees, inn, comment, phone, email };
 }
 
 function getTableData(client) {
@@ -957,7 +1165,7 @@ async function loadData() {
     
     clients = data.map(c => {
         let bt = c.board_type;
-        if (bt !== 'revenue' && bt !== 'table') {
+        if (bt !== 'm1' && bt !== 'table') {
             const dir = (c.direction || '').toLowerCase();
             bt = dir.includes('pix оператор') ? 'key' : 'main';
         }
@@ -1013,15 +1221,17 @@ supabaseClient.channel('clients-changes')
     .subscribe();
 
 function generateId() { return 'id_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9); }
+
 function showPage(pageId) {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('#ramilCrmWrapper .page').forEach(p => p.classList.remove('active'));
     document.getElementById(pageId).classList.add('active');
     if (pageId === 'mainMenu') { updateStats(); populatePlanMonths(); updateSalesPlan(); renderBoardAll(); }
     if (pageId === 'boardMain') { populateMonthFilter('monthFilterMain', 'main'); renderBoard('main'); }
     if (pageId === 'boardKey') { populateMonthFilter('monthFilterKey', 'key'); renderBoard('key'); }
-    if (pageId === 'boardRevenue') { renderRevenueTable(); }
-    if (pageId === 'boardTable') { renderTableBoard(); }
+    if (pageId === 'boardTable') { renderSimpleTable('table'); }
+    if (pageId === 'boardM1') { renderSimpleTable('m1'); }
 }
+
 function populatePlanMonths() {
     const select = document.getElementById('planMonthSelect');
     if (!select) return;
@@ -1035,6 +1245,7 @@ function populatePlanMonths() {
     if (current && months.has(current)) select.value = current;
     else select.value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2, '0')}`;
 }
+
 function updateSalesPlan() {
     const monthSelect = document.getElementById('planMonthSelect');
     if (!monthSelect) return;
@@ -1065,6 +1276,7 @@ function updateSalesPlan() {
     document.getElementById('signedPercent').textContent = signedPercent + '%';
     document.getElementById('signedBar').style.width = signedPercent + '%';
 }
+
 function updateStats() {
     const activeClients = clients.filter(isActive);
     const waitingClients = activeClients.filter(c => !isPaidStage(c));
@@ -1078,16 +1290,17 @@ function updateStats() {
     
     document.getElementById('mainClientCount').textContent = clients.filter(c => c.boardType === 'main').length;
     document.getElementById('keyClientCount').textContent = clients.filter(c => c.boardType === 'key').length;
-    document.getElementById('revenueClientCount').textContent = clients.filter(c => c.boardType === 'revenue').length;
     document.getElementById('tableClientCount').textContent = clients.filter(c => c.boardType === 'table').length;
+    document.getElementById('m1ClientCount').textContent = clients.filter(c => c.boardType === 'm1').length;
     renderFunnelByMonth(activeClients);
 }
+
 function renderFunnelByMonth(activeClients) {
     const container = document.getElementById('funnelByMonth');
     const byMonth = {};
     activeClients.forEach(c => {
         const key = c.expectedMonth || '';
-        if (!byMonth[key]) byMonth[key] = { expected: { main: 0, key: 0, rev: 0 }, paid: { main: 0, key: 0, rev: 0 } };
+        if (!byMonth[key]) byMonth[key] = { expected: { main: 0, key: 0, m1: 0 }, paid: { main: 0, key: 0, m1: 0 } };
         const isPaid = isPaidStage(c);
         const bucket = isPaid ? byMonth[key].paid : byMonth[key].expected;
         const type = c.boardType || 'main';
@@ -1098,15 +1311,14 @@ function renderFunnelByMonth(activeClients) {
     container.innerHTML = keys.map(k => {
         const label = k ? formatMonthLabel(k) : 'Без месяца';
         const d = byMonth[k];
-        const expTotal = d.expected.main + d.expected.key + d.expected.rev;
-        const paidTotal = d.paid.main + d.paid.key + d.paid.rev;
+        const expTotal = d.expected.main + d.expected.key + d.expected.m1;
+        const paidTotal = d.paid.main + d.paid.key + d.paid.m1;
         let html = `<div class="stat-card p-3" style="min-width:260px; border-left: 3px solid var(--n-border);"><div class="text-muted small fw-bold mb-2">${label}</div>`;
         if (expTotal > 0) {
             html += `<div class="d-flex justify-content-between align-items-center mb-1"><span class="text-secondary small fw-semibold">Ожидается:</span><span class="fw-bold text-dark">${formatAmount(expTotal)} ₽</span></div>
                 <div class="small text-muted mb-2" style="font-size: 0.8rem; line-height: 1.4;">
                     <div class="d-flex justify-content-between"><span>Текущие:</span> <span>${formatAmount(d.expected.main)} ₽</span></div>
                     <div class="d-flex justify-content-between"><span>Pix оператор:</span> <span>${formatAmount(d.expected.key)} ₽</span></div>
-                    ${d.expected.rev > 0 ? `<div class="d-flex justify-content-between"><span>Выручка:</span> <span>${formatAmountCompact(d.expected.rev)} ₽</span></div>` : ''}
                 </div>`;
         }
         if (paidTotal > 0) {
@@ -1114,13 +1326,13 @@ function renderFunnelByMonth(activeClients) {
                 <div class="small text-muted" style="font-size: 0.8rem; line-height: 1.4;">
                     <div class="d-flex justify-content-between"><span>Текущие:</span> <span>${formatAmountCompact(d.paid.main)} ₽</span></div>
                     <div class="d-flex justify-content-between"><span>Pix оператор:</span> <span>${formatAmountCompact(d.paid.key)} ₽</span></div>
-                    ${d.paid.rev > 0 ? `<div class="d-flex justify-content-between"><span>Выручка:</span> <span>${formatAmountCompact(d.paid.rev)} ₽</span></div>` : ''}
                 </div></div>`;
         }
         html += `</div>`;
         return html;
     }).join('');
 }
+
 function formatMonthLabel(ym) {
     if (!ym) return 'не указан';
     const parts = ym.split('-');
@@ -1128,6 +1340,7 @@ function formatMonthLabel(ym) {
     const m = parseInt(parts[1], 10);
     return m >= 1 && m <= 12 ? `${MONTH_NAMES[m - 1]} ${parts[0]}` : ym;
 }
+
 function populateMonthFilter(selectId, boardType) {
     const select = document.getElementById(selectId);
     if (!select) return;
@@ -1137,17 +1350,19 @@ function populateMonthFilter(selectId, boardType) {
     select.innerHTML = '<option value="">Все месяцы</option>' + Array.from(months).sort().map(m => `<option value="${m}">${formatMonthLabel(m)}</option>`).join('');
     if (current && select.querySelector(`option[value="${current}"]`)) select.value = current;
 }
+
 function getFilteredClientsForBoard(boardType) {
     const selectId = boardType === 'main' ? 'monthFilterMain' : 'monthFilterKey';
     const el = document.getElementById(selectId);
     const filterValue = el ? el.value : '';
     return clients.filter(c => {
         if (filterValue && c.expectedMonth !== filterValue) return false;
-        if (boardType === 'main') return c.boardType !== 'revenue' && c.boardType !== 'table';
-        if (boardType === 'key') return c.boardType !== 'revenue' && c.boardType !== 'table' && c.direction && c.direction.toLowerCase().includes('pix оператор');
+        if (boardType === 'main') return c.boardType !== 'm1' && c.boardType !== 'table';
+        if (boardType === 'key') return c.boardType !== 'm1' && c.boardType !== 'table' && c.direction && c.direction.toLowerCase().includes('pix оператор');
         return false;
     });
 }
+
 function renderBoard(boardType) {
     const boardId = boardType === 'main' ? 'kanban-main' : 'kanban-key';
     const board = document.getElementById(boardId);
@@ -1189,7 +1404,7 @@ function renderBoardAll() {
     stages.forEach((stage, stageIndex) => {
         const col = document.createElement('div');
         col.className = 'kanban-column';
-        const stageClients = clients.filter(c => c.boardType !== 'revenue' && c.boardType !== 'table' && getUnifiedStage(c) === stageIndex);
+        const stageClients = clients.filter(c => c.boardType !== 'm1' && c.boardType !== 'table' && getUnifiedStage(c) === stageIndex);
         col.innerHTML = `
             <div class="column-header">
                 <span class="stage-title">${stage}</span>
@@ -1220,47 +1435,16 @@ function renderBoardAll() {
     });
 }
 
-function renderRevenueTable() {
-    const tbody = document.getElementById('revenueTableBody');
+// Универсальная отрисовка таблиц (table и m1)
+function renderSimpleTable(boardType) {
+    const tbodyId = boardType === 'table' ? 'tableBody' : 'm1TableBody';
+    const tbody = document.getElementById(tbodyId);
     if (!tbody) return;
     tbody.innerHTML = '';
-    const revClients = clients.filter(c => c.boardType === 'revenue');
-    
-    if (revClients.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted py-4">Нет данных. Импортируйте Excel файл.</td></tr>';
-        return;
-    }
-    
-    revClients.forEach(client => {
-        const data = getRevenueData(client);
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td><input type="text" class="table-input" value="${escapeHtml(client.name)}" onchange="updateRevenueClient('${client.id}', 'name', this.value)"></td>
-            <td><input type="text" class="table-input" value="${escapeHtml(data.sphere)}" onchange="updateRevenueClient('${client.id}', 'sphere', this.value)"></td>
-            <td><input type="number" class="table-input" value="${escapeHtml(data.employees)}" onchange="updateRevenueClient('${client.id}', 'employees', this.value)"></td>
-            <td><input type="number" class="table-input" value="${Math.round(client.amount / 1000)}" onchange="updateRevenueClient('${client.id}', 'amount', this.value * 1000)"></td>
-            <td><input type="text" class="table-input" value="${escapeHtml(data.comment)}" onchange="updateRevenueClient('${client.id}', 'comment', this.value)"></td>
-            <td><input type="text" class="table-input" value="${escapeHtml(data.inn)}" onchange="updateRevenueClient('${client.id}', 'inn', this.value)"></td>
-            <td><input type="text" class="table-input" value="${escapeHtml(data.phone)}" onchange="updateRevenueClient('${client.id}', 'phone', this.value)"></td>
-            <td><input type="text" class="table-input" value="${escapeHtml(data.email)}" onchange="updateRevenueClient('${client.id}', 'email', this.value)"></td>
-            <td class="text-center" style="white-space: nowrap;">
-                <button class="btn btn-sm btn-outline-secondary me-1" title="Задачи/Комментарии" onclick="openClientModal('${client.id}')"><i class="bi bi-chat-left-text"></i></button>
-                <button class="btn btn-sm btn-success" onclick="moveToKanban('${client.id}')" title="Перенести в воронку"><i class="bi bi-arrow-right-circle"></i></button>
-                <button class="btn btn-sm btn-outline-danger ms-1" onclick="deleteClientById('${client.id}')" title="Удалить"><i class="bi bi-trash"></i></button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-function renderTableBoard() {
-    const tbody = document.getElementById('tableBody');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    const tableClients = clients.filter(c => c.boardType === 'table');
+    const tableClients = clients.filter(c => c.boardType === boardType);
     
     if (tableClients.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">Нет данных. Нажмите "Добавить строку" или "Импорт из Excel".</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Нет данных. Нажмите "Добавить строку" или "Импорт из Excel".</td></tr>`;
         return;
     }
     
@@ -1299,11 +1483,11 @@ function renderTableBoard() {
     });
 }
 
-async function addTableRow() {
+async function addTableRow(boardType) {
     const newClient = {
         id: generateId(),
         name: 'Новый клиент',
-        boardType: 'table',
+        boardType: boardType,
         contact: '',
         notes: JSON.stringify({ inn: '', comment: '', status: '' }),
         stage: 0,
@@ -1318,8 +1502,8 @@ async function addTableRow() {
     await loadData();
 }
 
-async function deleteAllTableClients() {
-    const tableClients = clients.filter(c => c.boardType === 'table');
+async function deleteAllTableClients(boardType) {
+    const tableClients = clients.filter(c => c.boardType === boardType);
     if (tableClients.length === 0) return alert('Таблица уже пуста.');
     
     if (!confirm(`Вы уверены, что хотите удалить ВСЕХ клиентов (${tableClients.length}) из этой таблицы? Действие необратимо.`)) return;
@@ -1341,30 +1525,7 @@ async function updateTableClient(id, field, value) {
         client.notes = JSON.stringify(data);
     }
     await saveClientToDB(client);
-    if (field === 'status') renderTableBoard();
-}
-
-async function updateRevenueClient(id, field, value) {
-    const client = clients.find(c => c.id === id);
-    if (!client) return;
-    
-    let data = getRevenueData(client);
-    
-    if (field === 'name') client.name = value;
-    else if (field === 'amount') client.amount = value;
-    else {
-        if (field === 'phone') {
-            data.phone = value;
-            client.contact = `${data.phone}, ${data.email}`.replace(/^, |, $/g, '');
-        } else if (field === 'email') {
-            data.email = value;
-            client.contact = `${data.phone}, ${data.email}`.replace(/^, |, $/g, '');
-        } else {
-            data[field] = value;
-            client.notes = JSON.stringify(data);
-        }
-    }
-    await saveClientToDB(client);
+    if (field === 'status') renderSimpleTable(client.boardType);
 }
 
 async function moveToKanban(id) {
@@ -1383,6 +1544,7 @@ async function moveToKanban(id) {
 }
 
 async function deleteClientById(id) {
+    if (!confirm('Удалить этого клиента?')) return;
     await deleteClientsFromDB([id]);
     await loadData();
 }
@@ -1393,13 +1555,13 @@ function renderClientCard(client) {
     const isPaid = isPaidStage(client);
     const paidBadge = isPaid ? `<span class="paid-badge"><i class="bi bi-check-circle-fill"></i> Оплачен</span>` : `<span class="unpaid-badge"><i class="bi bi-clock"></i> Не оплачен</span>`;
     const dropBadge = (client.dropReason) ? `<div class="mt-2"><span class="drop-badge"><i class="bi bi-x-circle"></i> ${escapeHtml(client.dropReason)}</span></div>` : '';
-    const amountText = client.boardType === 'revenue' ? formatAmountCompact(client.amount) : formatAmount(client.amount);
+    const amountText = formatAmount(client.amount);
     
     let boardIcon = '';
     if (client.boardType === 'main') boardIcon = '<span class="badge bg-secondary ms-2" style="font-size:0.6rem">тек</span>';
     if (client.boardType === 'key') boardIcon = '<span class="badge bg-primary ms-2" style="font-size:0.6rem">pix</span>';
-    if (client.boardType === 'revenue') boardIcon = '<span class="badge bg-success ms-2" style="font-size:0.6rem">выр</span>';
     if (client.boardType === 'table') boardIcon = '<span class="badge bg-warning text-dark ms-2" style="font-size:0.6rem">таб</span>';
+    if (client.boardType === 'm1') boardIcon = '<span class="badge bg-info text-dark ms-2" style="font-size:0.6rem">м1</span>';
 
     const stageName = getStages(client.boardType)[client.stage] || 'Неизвестно';
     return `
@@ -1419,6 +1581,7 @@ function renderClientCard(client) {
             </div>
         </div>`;
 }
+
 function formatAmount(amount) { return amount ? Number(amount).toLocaleString('ru-RU') : '0'; }
 function formatAmountCompact(amount) { const n = Number(amount) || 0; if (n >= 1e6) return (n / 1e6).toFixed(1).replace('.', ',') + ' млн'; if (n >= 1e3) return (n / 1e3).toFixed(0) + ' тыс'; return n.toLocaleString('ru-RU'); }
 function formatDate(datetime) { return datetime ? new Date(datetime).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'не указано'; }
@@ -1431,19 +1594,20 @@ async function deleteAllInStage(boardType, stageIndex) {
     await deleteClientsFromDB(toDelete.map(c => c.id));
     await loadData();
 }
+
 function refreshAll() {
     populateMonthFilter('monthFilterMain', 'main'); 
     populateMonthFilter('monthFilterKey', 'key');
     renderBoard('main'); 
     renderBoard('key'); 
-    renderRevenueTable();
-    renderTableBoard();
+    renderSimpleTable('table');
+    renderSimpleTable('m1');
     updateStats(); 
     populatePlanMonths(); 
     updateSalesPlan();
     renderBoardAll();
-    renderWelcomeStatuses();
 }
+
 async function moveClientToStage(clientId, stage) {
     const client = clients.find(c => c.id === clientId);
     if (!client) return;
@@ -1461,6 +1625,7 @@ async function moveClientToStage(clientId, stage) {
     await saveClientToDB(client);
     await loadData();
 }
+
 async function confirmDropMove() {
     const selected = document.querySelector('input[name="dropReasonRadio"]:checked');
     if (!selected) return alert('Выберите причину.');
@@ -1506,6 +1671,7 @@ function openClientModal(clientId = null) {
     }
     modal.show();
 }
+
 function updateModalStages() {
     let type = document.getElementById('clientBoardType').value;
     const dir = document.getElementById('clientDirection').value.toLowerCase();
@@ -1517,6 +1683,7 @@ function updateModalStages() {
     if (currentVal !== undefined && currentVal < stages.length) stageSelect.value = currentVal;
     const dropIndex = stages.length - 1; document.getElementById('dropReasonBlock').style.display = parseInt(stageSelect.value, 10) === dropIndex ? 'block' : 'none';
 }
+
 document.getElementById('clientBoardType').addEventListener('change', updateModalStages);
 document.getElementById('clientDirection').addEventListener('input', () => { if (document.getElementById('clientBoardType').value === 'auto') updateModalStages(); });
 document.addEventListener('change', (e) => {
@@ -1537,6 +1704,7 @@ function renderEventsInModal(events) {
         return `<div class="event-item"><div class="event-info"><span class="event-date">${formatDate(ev.datetime)} ${badge}</span><span class="text-muted small">${escapeHtml(ev.description)}</span></div><button class="btn btn-outline-danger btn-sm border-0" onclick="deleteEventFromModal('${ev.id}')"><i class="bi bi-trash"></i></button></div>`;
     }).join('');
 }
+
 function populateCommentTaskSelect(events) {
     const select = document.getElementById('commentTaskSelect'); const current = select.value; select.innerHTML = '<option value="">Общий комментарий</option>';
     (events || []).slice().sort((a, b) => new Date(a.datetime) - new Date(b.datetime)).forEach(ev => {
@@ -1544,6 +1712,7 @@ function populateCommentTaskSelect(events) {
     });
     if (current && select.querySelector(`option[value="${current}"]`)) select.value = current;
 }
+
 function renderCommentsInModal(comments, events) {
     const container = document.getElementById('commentListContainer');
     if (!comments || comments.length === 0) return container.innerHTML = '<p class="text-muted small mb-0">Комментариев пока нет.</p>';
@@ -1566,6 +1735,7 @@ function renderCommentsInModal(comments, events) {
     });
     container.innerHTML = html;
 }
+
 async function addEventFromModal() {
     const clientId = document.getElementById('clientId').value; const datetime = document.getElementById('eventDateTime').value; const description = document.getElementById('eventDescription').value.trim();
     if (!clientId) return alert('Сначала сохраните клиента.'); if (!datetime || !description) return alert('Заполните дату и описание.');
@@ -1575,6 +1745,7 @@ async function addEventFromModal() {
     document.getElementById('eventDateTime').value = ''; document.getElementById('eventDescription').value = '';
     await saveClientToDB(client); await loadData();
 }
+
 async function deleteEventFromModal(eventId) {
     const clientId = document.getElementById('clientId').value; const client = clients.find(c => c.id === clientId);
     if (!client || !confirm('Удалить задачу?')) return;
@@ -1583,6 +1754,7 @@ async function deleteEventFromModal(eventId) {
     renderEventsInModal(client.events); populateCommentTaskSelect(client.events); renderCommentsInModal(client.comments, client.events);
     await saveClientToDB(client); await loadData();
 }
+
 async function addCommentFromModal() {
     const clientId = document.getElementById('clientId').value; const text = document.getElementById('commentText').value.trim(); const eventId = document.getElementById('commentTaskSelect').value || null;
     if (!text) return alert('Введите текст.'); if (!clientId) return alert('Сначала сохраните клиента.');
@@ -1592,6 +1764,7 @@ async function addCommentFromModal() {
     document.getElementById('commentText').value = '';
     await saveClientToDB(client); await loadData();
 }
+
 async function deleteCommentFromModal(commentId) {
     const clientId = document.getElementById('clientId').value; const client = clients.find(c => c.id === clientId);
     if (!client) return;
@@ -1599,6 +1772,7 @@ async function deleteCommentFromModal(commentId) {
     renderCommentsInModal(client.comments, client.events); renderEventsInModal(client.events);
     await saveClientToDB(client); await loadData();
 }
+
 async function saveClient() {
     const id = document.getElementById('clientId').value; const name = document.getElementById('clientName').value.trim();
     const amount = parseFloat(document.getElementById('clientAmount').value) || 0; const stage = parseInt(document.getElementById('clientStage').value, 10);
@@ -1651,6 +1825,31 @@ function exportToExcel() {
     XLSX.utils.book_append_sheet(wb, ws, "Клиенты");
     ws['!cols'] = [{wch: 25}, {wch: 20}, {wch: 10}, {wch: 10}, {wch: 30}, {wch: 20}, {wch: 40}, {wch: 20}, {wch: 15}];
     XLSX.writeFile(wb, `CRM_Клиенты_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+function exportTableToExcel(boardType) {
+    const tableClients = clients.filter(c => c.boardType === boardType);
+    if (tableClients.length === 0) return alert('Нет данных для экспорта.');
+    
+    const dataToExport = tableClients.map(c => {
+        const data = getTableData(c);
+        let statusText = '';
+        if (data.status === 'no_interest') statusText = 'Нет интереса';
+        else if (data.status === 'in_progress') statusText = 'Взял в работу';
+        else if (data.status === 'search') statusText = 'Поиск иного лица';
+        else if (data.status === 'catch') statusText = 'Есть прикол';
+        
+        return {
+            'Название клиента': c.name, 'ИНН': data.inn, 'Контактное лицо': c.contact,
+            'Комментарий': data.comment, 'Статус': statusText
+        };
+    });
+    
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const wb = XLSX.utils.book_new();
+    const sheetName = boardType === 'table' ? 'ИНН' : 'М-1';
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    XLSX.writeFile(wb, `${sheetName}_Клиенты_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 
 function parseMonthValue(raw) {
@@ -1719,78 +1918,7 @@ async function importFromExcel() {
     reader.readAsArrayBuffer(input.files[0]);
 }
 
-async function importRevenueFromExcel() {
-    const input = document.getElementById('excelFileInput');
-    const result = document.getElementById('importResult');
-    if (!input.files.length) return result.innerHTML = '<div class="alert alert-warning">Выберите файл.</div>';
-    const reader = new FileReader();
-    reader.onload = async function (e) {
-        try {
-            const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-            const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { header: 1, defval: '' });
-            let headerIdx = rows.findIndex(r => (r||[]).some(c => String(c).toLowerCase().includes('название компании')));
-            if (headerIdx < 0) throw new Error('Не найдена строка заголовков.');
-            
-            const header = rows[headerIdx].map(h => String(h || '').trim().toLowerCase());
-            const idx = {
-                name: header.findIndex(h => h.includes('название компании') || h === 'название'),
-                sphere: header.findIndex(h => h.includes('сфера деятельности') || h.includes('сфера')),
-                employees: header.findIndex(h => h.includes('кол-во сотрудников') || h.includes('сотрудник')),
-                revenue: header.findIndex(h => h.includes('годовой оборот') || h.includes('оборот')),
-                comment: header.findIndex(h => h.includes('комментарий')),
-                inn: header.findIndex(h => h.includes('инн')),
-                phone: header.findIndex(h => h.includes('телефон')),
-                email: header.findIndex(h => h.includes('email') || h.includes('почта')),
-            };
-            
-            const existingNames = new Set(clients.map(c => c.name.toLowerCase()));
-            const newClients = [];
-            
-            for (let i = headerIdx + 1; i < rows.length; i++) {
-                const row = rows[i];
-                if (!row || !row[idx.name]) continue;
-                const name = String(row[idx.name]).trim();
-                if (name.toLowerCase() === 'нет компании с выручкой' || existingNames.has(name.toLowerCase())) continue;
-                
-                const rev = parseFloat(String(row[idx.revenue] || '').replace(/[^\d.,-]/g, '').replace(',', '.'));
-                if (!rev || rev <= 0) continue;
-                
-                const sphere = idx.sphere >= 0 ? String(row[idx.sphere] || '').trim() : '';
-                const employees = idx.employees >= 0 ? String(row[idx.employees] || '').trim() : '';
-                const inn = idx.inn >= 0 ? String(row[idx.inn] || '').trim() : '';
-                const comment = idx.comment >= 0 ? String(row[idx.comment] || '').trim() : '';
-                
-                const notes = JSON.stringify({ sphere, employees, inn, comment });
-                
-                const phone = idx.phone >= 0 ? String(row[idx.phone] || '').replace(/<br\s*\/?>/gi, '').trim() : '';
-                const email = idx.email >= 0 ? String(row[idx.email] || '').replace(/<br\s*\/?>/gi, '').trim() : '';
-                
-                const contactParts = [];
-                if (phone) contactParts.push(phone);
-                if (email) contactParts.push(email);
-                const contact = contactParts.join(', ');
-                
-                newClients.push({
-                    name, board_type: 'revenue', direction: '',
-                    amount: rev * 1000, expected_month: '', contact, stage: 0,
-                    notes, drop_reason: '', events: [], comments: []
-                });
-                existingNames.add(name.toLowerCase());
-            }
-            
-            if (newClients.length > 0) {
-                const { error } = await supabaseClient.from('clients').insert(newClients);
-                if (error) throw error;
-            }
-            
-            result.innerHTML = `<div class="alert alert-success">Импортировано в базу: ${newClients.length}</div>`;
-            await loadData();
-        } catch (err) { result.innerHTML = `<div class="alert alert-danger">Ошибка: ${escapeHtml(err.message)}</div>`; }
-    };
-    reader.readAsArrayBuffer(input.files[0]);
-}
-
-async function importTableFromExcel(event) {
+async function importTableFromExcel(event, boardType) {
     const file = event.target.files[0];
     if (!file) return;
 
@@ -1838,608 +1966,40 @@ async function importTableFromExcel(event) {
                     status = reverseStatusMap[rawStatus] || '';
                 }
 
+                const notes = JSON.stringify({ inn, comment, status });
+
                 newClients.push({
-                    name: name,
-                    board_type: 'table',
-                    contact: contact,
-                    notes: JSON.stringify({ inn, comment, status }),
-                    stage: 0,
-                    amount: 0,
-                    direction: '',
-                    expected_month: '',
-                    drop_reason: '',
-                    events: [],
-                    comments: []
+                    name, board_type: boardType, direction: '',
+                    amount: 0, expected_month: '', contact, stage: 0,
+                    notes, drop_reason: '', events: [], comments: []
                 });
             }
-
+            
             if (newClients.length > 0) {
                 const { error } = await supabaseClient.from('clients').insert(newClients);
                 if (error) throw error;
             }
-
-            alert(`✅ Импортировано в таблицу: ${newClients.length}`);
+            
+            alert(`Импортировано в таблицу: ${newClients.length}`);
             await loadData();
-        } catch (err) {
-            console.error(err);
-            alert('❌ Ошибка при чтении файла: ' + err.message);
-        }
-        event.target.value = '';
+        } catch (err) { alert('Ошибка: ' + err.message); }
     };
     reader.readAsArrayBuffer(file);
 }
 
-function exportTableToExcel() {
-    const tableClients = clients.filter(c => c.boardType === 'table');
-    if (tableClients.length === 0) return alert('Таблица пуста.');
-
-    const dataToExport = tableClients.map(c => {
-        const data = getTableData(c);
-        
-        let statusLabel = '';
-        if (data.status === 'no_interest') statusLabel = 'Нет интереса';
-        else if (data.status === 'in_progress') statusLabel = 'Взял в работу';
-        else if (data.status === 'search') statusLabel = 'Поиск иного лица';
-        else if (data.status === 'catch') statusLabel = 'Есть прикол';
-
-        return {
-            'Название клиента': c.name,
-            'ИНН': data.inn,
-            'Контактное лицо': c.contact,
-            'Комментарий': data.comment,
-            'Статус': statusLabel
-        };
+// Запуск при загрузке страницы
+document.addEventListener('DOMContentLoaded', async () => {
+    // Добавляем datalist для направлений
+    const datalist = document.getElementById('directionOptions');
+    DIRECTIONS.forEach(dir => {
+        const option = document.createElement('option');
+        option.value = dir;
+        datalist.appendChild(option);
     });
 
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Таблица ИНН");
-    ws['!cols'] = [{wch: 35}, {wch: 15}, {wch: 25}, {wch: 40}, {wch: 20}];
-    XLSX.writeFile(wb, `CRM_Таблица_ИНН_${new Date().toISOString().slice(0,10)}.xlsx`);
-}
-
-/* ====================================================================
-   ЧАСТЬ 2 — ОТДЕЛ СОПРОВОЖДЕНИЯ И КАЛЕНДАРЬ
-   ==================================================================== */
-let db = { 
-    ramil: { funnel: [], reports: [], status: {} }, 
-    svetlana: { funnel: [], reports: [], status: {} }, 
-    diana: { funnel: [], reports: [], status: {} }, 
-    anna: { funnel: [], reports: [], status: {} } 
-};
-let currentManager = 'ramil';
-
-const managerNames = { ramil: 'Рамиль', svetlana: 'Светлана', diana: 'Диана', anna: 'Анна' };
-const managerPlans = { svetlana: 550000, diana: 900000, anna: 50000 };
-
-async function loadSupportData() {
-    const { data, error } = await supabaseClient.from('support_data').select('*');
-    if (error) {
-        console.error('Ошибка загрузки support_data:', error);
-        return;
-    }
-    db = { 
-        ramil: { funnel: [], reports: [], status: {} }, 
-        svetlana: { funnel: [], reports: [], status: {} }, 
-        diana: { funnel: [], reports: [], status: {} }, 
-        anna: { funnel: [], reports: [], status: {} } 
-    };
-    data.forEach(row => {
-        let st = row.status || {};
-        if (st.type && !st[new Date().toISOString().slice(0, 10)]) {
-            st = {}; 
-        }
-        db[row.manager] = { 
-            funnel: row.funnel || [], 
-            reports: row.reports || [], 
-            status: st 
-        };
-    });
-    
-    if (document.getElementById('supportWrapper').style.display === 'block') {
-        renderAllSupport();
-    }
+    // Первичная загрузка данных
+    await loadStatuses();
     renderWelcomeStatuses();
-}
-
-async function saveSupportData(managerKey) {
-    if (!db[managerKey]) return;
-    const { error } = await supabaseClient.from('support_data').upsert({
-        manager: managerKey,
-        funnel: db[managerKey].funnel || [],
-        reports: db[managerKey].reports || [],
-        status: db[managerKey].status || {},
-        updated_at: new Date().toISOString()
-    });
-    if (error) {
-        console.error('Ошибка сохранения:', error);
-        alert('❌ Ошибка сохранения в облако: ' + error.message);
-    }
-}
-
-supabaseClient.channel('support-changes')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'support_data' }, () => loadSupportData())
-    .subscribe();
-
-function switchManager(manager) {
-    currentManager = manager;
-    document.querySelectorAll('.manager-btn').forEach(el => el.classList.remove('active'));
-    const btn = document.querySelector(`.manager-btn[onclick*="'${manager}'"]`);
-    if (btn) btn.classList.add('active');
-
-    if (manager === 'ramil') {
-        document.getElementById('ramilCrmWrapper').style.display = 'block';
-        document.getElementById('supportWrapper').style.display = 'none';
-    } else {
-        document.getElementById('ramilCrmWrapper').style.display = 'none';
-        document.getElementById('supportWrapper').style.display = 'block';
-        document.getElementById('currentManagerTitle').innerText = "Отдел сопровождения: " + (managerNames[manager] || manager);
-        renderAllSupport();
-    }
-}
-function renderAllSupport() { 
-    renderFunnel(); 
-    renderReports(); 
-    calculateTotals(); 
-    populateSupportPlanMonths();
-    updateSupportSalesPlan();
-    renderSupportFunnelByMonth();
-}
-
-function populateSupportPlanMonths() {
-    const select = document.getElementById('supportPlanMonth');
-    if (!select) return;
-    const current = select.value;
-    const months = new Set();
-    db[currentManager].funnel.forEach(r => {
-        if (r.date && typeof r.date === 'string') months.add(r.date.substring(0, 7));
-    });
-    const today = new Date();
-    months.add(`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2, '0')}`);
-    const sorted = Array.from(months).sort();
-    select.innerHTML = sorted.map(m => `<option value="${m}">${formatMonthLabel(m)}</option>`).join('');
-    if (current && months.has(current)) select.value = current;
-    else select.value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2, '0')}`;
-}
-
-function updateSupportSalesPlan() {
-    const select = document.getElementById('supportPlanMonth');
-    if (!select) return;
-    const targetMonth = select.value;
-    const plan = managerPlans[currentManager] || 0;
-    let paidSum = 0, expectedSum = 0;
-
-    db[currentManager].funnel.forEach(row => {
-        const rowMonth = (row.date && typeof row.date === 'string') ? row.date.substring(0, 7) : '';
-        if (rowMonth === targetMonth) {
-            const amt = Number(row.amount) || 0;
-            if (row.paid) paidSum += amt;
-            else expectedSum += amt;
-        }
-    });
-
-    const percent = plan > 0 ? Math.min(100, Math.round((paidSum / plan) * 100)) : 0;
-
-    document.getElementById('supportPlan').innerText = formatMoney(plan);
-    document.getElementById('supportActual').innerText = formatMoney(paidSum);
-    document.getElementById('supportPercent').innerText = percent + '%';
-    document.getElementById('supportExpected').innerText = formatMoney(expectedSum);
-    const bar = document.getElementById('supportProgressBar');
-    bar.style.width = percent + '%';
-    bar.style.backgroundColor = percent >= 100 ? 'var(--n-green)' : 'var(--n-red)';
-}
-
-function renderSupportFunnelByMonth() {
-    const container = document.getElementById('supportFunnelByMonth');
-    if (!container) return;
-    const byMonth = {};
-    db[currentManager].funnel.forEach(row => {
-        const key = (row.date && typeof row.date === 'string') ? row.date.substring(0, 7) : '';
-        if (!byMonth[key]) byMonth[key] = { expected: 0, paid: 0 };
-        const amt = Number(row.amount) || 0;
-        if (row.paid) byMonth[key].paid += amt;
-        else byMonth[key].expected += amt;
-    });
-
-    const keys = Object.keys(byMonth).sort((a, b) => { if (!a) return 1; if (!b) return -1; return a.localeCompare(b); });
-    if (keys.length === 0) return container.innerHTML = '<p class="text-muted small mb-0">Нет данных.</p>';
-
-    container.innerHTML = keys.map(k => {
-        const label = k ? formatMonthLabel(k) : 'Без месяца';
-        const d = byMonth[k];
-        let html = `<div class="stat-card p-3" style="min-width:220px; border-left: 3px solid var(--n-border);">
-            <div class="text-muted small fw-bold mb-2">${label}</div>`;
-        html += `<div class="d-flex justify-content-between align-items-center mb-1">
-            <span class="text-secondary small fw-semibold">Ожидается:</span>
-            <span class="fw-bold text-dark">${formatMoney(d.expected)}</span>
-        </div>`;
-        html += `<div class="border-top pt-2 mt-1">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-                <span class="text-success small fw-semibold">Оплачено:</span>
-                <span class="fw-bold text-success">${formatMoney(d.paid)}</span>
-            </div>
-        </div></div>`;
-        return html;
-    }).join('');
-}
-
-function renderFunnel() {
-    const tbody = document.getElementById('funnelBody'); tbody.innerHTML = '';
-    const data = db[currentManager].funnel;
-    data.forEach((row, index) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td style="color:var(--text-muted); text-align:center; font-size:12px;">${index + 1}</td>
-            <td><input type="text" value="${row.client || ''}" placeholder="Название клиента" onchange="updateFunnel(${row.id}, 'client', this.value)"></td>
-            <td>
-                <select class="status-select status-${row.statusIndex || 0}" onchange="updateFunnelStatus(${row.id}, this)">
-                    <option value="0" ${row.statusIndex == 0 ? 'selected' : ''}>— Оценка —</option>
-                    <option value="1" ${row.statusIndex == 1 ? 'selected' : ''}>Выставлен счет</option>
-                    <option value="2" ${row.statusIndex == 2 ? 'selected' : ''}>Оплачено и в работе</option>
-                    <option value="3" ${row.statusIndex == 3 ? 'selected' : ''}>Выписана реализация</option>
-                    <option value="4" ${row.statusIndex == 4 ? 'selected' : ''}>Подписана реализация</option>
-                </select>
-            </td>
-            <td><input type="number" value="${row.amount || ''}" placeholder="0" onchange="updateFunnel(${row.id}, 'amount', Number(this.value))"></td>
-            <td style="text-align:center;"><input type="checkbox" ${row.paid ? 'checked' : ''} onchange="updateFunnel(${row.id}, 'paid', this.checked)"></td>
-            <td><input type="date" value="${row.date || ''}" onchange="updateFunnel(${row.id}, 'date', this.value)"></td>
-            <td><input type="text" value="${row.service || ''}" placeholder="Что продали..." onchange="updateFunnel(${row.id}, 'service', this.value)"></td>
-            <td style="text-align:center;"><button class="delete-btn" onclick="deleteFunnelRow(${row.id})">✖</button></td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-async function addFunnelRow() {
-    const newRow = { id: Date.now(), client: '', statusIndex: 0, amount: null, paid: false, date: '', service: '' };
-    db[currentManager].funnel.push(newRow);
-    renderAllSupport();
-    await saveSupportData(currentManager);
-}
-async function deleteFunnelRow(id) {
-    db[currentManager].funnel = db[currentManager].funnel.filter(r => r.id !== id);
-    renderAllSupport();
-    await saveSupportData(currentManager);
-}
-async function updateFunnel(id, field, value) {
-    const row = db[currentManager].funnel.find(r => r.id === id);
-    if (row) { 
-        row[field] = value; 
-        calculateTotals(); 
-        populateSupportPlanMonths();
-        updateSupportSalesPlan();
-        renderSupportFunnelByMonth();
-        await saveSupportData(currentManager); 
-    }
-}
-async function updateFunnelStatus(id, selectElement) {
-    const row = db[currentManager].funnel.find(r => r.id === id);
-    if (row) {
-        row.statusIndex = selectElement.value; selectElement.className = `status-select status-${selectElement.value}`;
-        await saveSupportData(currentManager);
-    }
-}
-function calculateTotals() {
-    let expected = 0, actual = 0;
-    db[currentManager].funnel.forEach(row => {
-        const amt = Number(row.amount) || 0;
-        if (row.paid) actual += amt;
-        else expected += amt;
-    });
-    document.getElementById('totalExpected').innerText = formatMoney(expected);
-    document.getElementById('totalActual').innerText = "Оплачено: " + formatMoney(actual);
-}
-function formatMoney(amount) { return new Intl.NumberFormat('ru-RU', { style: 'currency', currency: 'RUB', maximumFractionDigits: 0 }).format(amount); }
-
-function renderReports() {
-    const tbody = document.getElementById('reportBody'); tbody.innerHTML = '';
-    const data = db[currentManager].reports;
-    data.sort((a, b) => new Date(b.date) - new Date(a.date));
-    data.forEach(row => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td><input type="date" value="${row.date || ''}" onchange="updateReport(${row.id}, 'date', this.value)"></td>
-            <td><input type="number" value="${row.calls !== undefined ? row.calls : ''}" placeholder="0" onchange="updateReport(${row.id}, 'calls', Number(this.value))"></td>
-            <td><input type="number" value="${row.kp !== undefined ? row.kp : ''}" placeholder="0" onchange="updateReport(${row.id}, 'kp', Number(this.value))"></td>
-            <td><input type="number" value="${row.meetings !== undefined ? row.meetings : ''}" placeholder="0" onchange="updateReport(${row.id}, 'meetings', Number(this.value))"></td>
-            <td><input type="number" value="${row.invoicesCount !== undefined ? row.invoicesCount : ''}" placeholder="0" onchange="updateReport(${row.id}, 'invoicesCount', Number(this.value))"></td>
-            <td><input type="number" value="${row.invoicesAmount !== undefined ? row.invoicesAmount : ''}" placeholder="0" onchange="updateReport(${row.id}, 'invoicesAmount', Number(this.value))"></td>
-            <td><input type="text" value="${row.airTime || ''}" placeholder="Напр: 1 ч 52 мин" onchange="updateReport(${row.id}, 'airTime', this.value)"></td>
-            <td style="text-align:center;"><button class="delete-btn" onclick="deleteReportRow(${row.id})">✖</button></td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-async function addReportRow() {
-    const today = new Date().toISOString().split('T')[0];
-    const newRow = { id: Date.now(), date: today, calls: null, kp: null, meetings: null, invoicesCount: null, invoicesAmount: null, airTime: '' };
-    db[currentManager].reports.push(newRow);
-    renderReports();
-    await saveSupportData(currentManager);
-}
-async function deleteReportRow(id) {
-    db[currentManager].reports = db[currentManager].reports.filter(r => r.id !== id);
-    renderReports();
-    await saveSupportData(currentManager);
-}
-async function updateReport(id, field, value) {
-    const row = db[currentManager].reports.find(r => r.id === id);
-    if (row) {
-        row[field] = value; if (field === 'date') renderReports();
-        await saveSupportData(currentManager);
-    }
-}
-
-function formatExcelDate(dateVal) {
-    if (!dateVal) return '';
-    if (dateVal instanceof Date) return dateVal.toISOString().split('T')[0];
-    const str = String(dateVal).trim(); const match = str.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
-    if (match) return `${match[3]}-${match[2].padStart(2, '0')}-${match[1].padStart(2, '0')}`;
-    return str;
-}
-
-async function importSupportData(event) {
-    const file = event.target.files[0]; if (!file) return;
-    let targetManager = currentManager;
-    const fileNameLower = file.name.toLowerCase();
-    if (fileNameLower.includes('светлана') || fileNameLower.includes('света')) targetManager = 'svetlana';
-    else if (fileNameLower.includes('диана')) targetManager = 'diana';
-    else if (fileNameLower.includes('анна')) targetManager = 'anna';
-
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-        try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const reverseStatusMap = { 'Оценка': 0, '— Оценка —': 0, 'Выставлен счет': 1, 'Оплачено и в работе': 2, 'Выписана реализация': 3, 'Подписана реализация': 4 };
-            let importedFunnels = 0; let importedReports = 0;
-
-            workbook.SheetNames.forEach(sheetName => {
-                const sheet = workbook.Sheets[sheetName]; const json = XLSX.utils.sheet_to_json(sheet); const sheetNameLower = sheetName.toLowerCase();
-                if (sheetNameLower.includes('воронка')) {
-                    const validRows = json.filter(row => row['Клиент'] && !String(row['Клиент']).toLowerCase().includes('итого'));
-                    db[targetManager].funnel = validRows.map(row => {
-                        let amountKey = Object.keys(row).find(k => k.includes('Ожидаемая сумма') || k === 'Сумма');
-                        let statusKey = Object.keys(row).find(k => k.includes('Статус'));
-                        let paidKey = Object.keys(row).find(k => k.includes('Оплачено'));
-                        let dateKey = Object.keys(row).find(k => k.includes('Дата'));
-                        let serviceKey = Object.keys(row).find(k => k.includes('Услуга'));
-                        return {
-                            id: Date.now() + Math.random(), client: row['Клиент'] || '', statusIndex: reverseStatusMap[row[statusKey]] || 0,
-                            amount: row[amountKey] || null, paid: row[paidKey] === 'Да' || row[paidKey] === true,
-                            date: row[dateKey] ? formatExcelDate(row[dateKey]) : '', service: row[serviceKey] || ''
-                        };
-                    });
-                    importedFunnels += db[targetManager].funnel.length;
-                } else if (sheetNameLower.includes('отчет')) {
-                    const validRows = json.filter(row => row['Дата'] && !String(row['Дата']).toLowerCase().includes('итого'));
-                    db[targetManager].reports = validRows.map(row => {
-                        let amountKey = Object.keys(row).find(k => k.includes('Счета (сумма)') || k.includes('Сумма'));
-                        return {
-                            id: Date.now() + Math.random(), date: formatExcelDate(row['Дата']), calls: row['Звонки'] || null,
-                            kp: row['Отпр. КП'] || null, meetings: row['Встречи'] || null, invoicesCount: row['Счета (шт)'] || null,
-                            invoicesAmount: row[amountKey] || null, airTime: row['Эфир'] || ''
-                        };
-                    });
-                    importedReports += db[targetManager].reports.length;
-                }
-            });
-
-            await saveSupportData(targetManager);
-            if (targetManager !== currentManager) {
-                switchManager(targetManager);
-            } else {
-                renderAllSupport();
-            }
-            alert(`✅ Успешно импортировано в профиль "${targetManager}":\n- Записей воронки: ${importedFunnels}\n- Ежедневных отчетов: ${importedReports}`);
-        } catch (err) {
-            console.error(err); alert('❌ Ошибка при чтении файла: ' + err.message);
-        }
-        event.target.value = '';
-    };
-    reader.readAsArrayBuffer(file);
-}
-
-/* ====================================================================
-   КАЛЕНДАРЬ СТАТУСОВ
-   ==================================================================== */
-function formatDateForInput(d) {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-
-function renderWelcomeStatuses() {
-    const container = document.getElementById('teamStatusCalendar');
-    if (!container) return;
-    
-    const today = new Date();
-    const currentYear = today.getFullYear();
-    
-    const startDate = new Date(currentYear, 10, 1); // 10 - это ноябрь
-    const endDate = new Date(currentYear, 11, 31); // 11 - это декабрь
-    
-    let thead = '<tr><th>Дата</th>';
-    Object.values(managerNames).forEach(name => {
-        thead += `<th>${name}</th>`;
-    });
-    thead += '</tr>';
-    
-    let tbody = '';
-    let currentDate = new Date(startDate);
-    
-    while (currentDate <= endDate) {
-        const dateStr = formatDateForInput(currentDate);
-        const dayOfWeek = currentDate.getDay(); // 0 - Вс, 6 - Сб
-        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
-        
-        const dayName = DAY_NAMES[dayOfWeek];
-        const displayDate = `${String(currentDate.getDate()).padStart(2, '0')}.${String(currentDate.getMonth() + 1).padStart(2, '0')} (${dayName})`;
-        
-        const isToday = formatDateForInput(today) === dateStr;
-        const rowStyle = isToday ? 'style="background-color: #f0f7ff;"' : '';
-        
-        tbody += `<tr class="${isWeekend ? 'weekend-row' : ''}" ${rowStyle}>`;
-        tbody += `<td class="date-col">${displayDate}</td>`;
-        
-        Object.keys(managerNames).forEach(managerKey => {
-            const managerStatus = db[managerKey].status || {};
-            let statusObj = managerStatus[dateStr];
-            
-            if (!statusObj) {
-                if (!isWeekend) {
-                    statusObj = { type: 'office' };
-                } else {
-                    statusObj = { type: 'none' };
-                }
-            }
-            
-            const currentType = statusObj.type || 'none';
-            
-            const statusOptions = [
-                { value: 'office', label: '🟢 В офисе' },
-                { value: 'vacation', label: '🏖 Отпуск' },
-                { value: 'sick', label: '🤒 Больничный' },
-                { value: 'unpaid', label: '🟡 За свой счет' },
-                { value: 'remote', label: '🏠 На удаленке' },
-                { value: 'holiday', label: '🎉 Гос выходной' },
-                { value: 'none', label: '—' }
-            ];
-            
-            let selectHtml = `<select class="inline-status-select status-select-${currentType}" onchange="updateStatusInline('${managerKey}', '${dateStr}', this)">`;
-            statusOptions.forEach(opt => {
-                selectHtml += `<option value="${opt.value}" ${currentType === opt.value ? 'selected' : ''}>${opt.label}</option>`;
-            });
-            selectHtml += `</select>`;
-            
-            let commentIcon = '';
-            if (statusObj.comment) {
-                commentIcon = `<i class="bi bi-chat-left-text comment-icon" title="${escapeHtml(statusObj.comment)}" onclick="openStatusCommentModal('${managerKey}', '${dateStr}')"></i>`;
-            } else {
-                commentIcon = `<i class="bi bi-pencil-square comment-icon" style="opacity: 0.3;" onclick="openStatusCommentModal('${managerKey}', '${dateStr}')"></i>`;
-            }
-            
-            tbody += `<td style="position: relative;">${selectHtml}${commentIcon}</td>`;
-        });
-        tbody += `</tr>`;
-        
-        currentDate.setDate(currentDate.getDate() + 1);
-    }
-    
-    container.innerHTML = `<thead>${thead}</thead><tbody>${tbody}</tbody>`;
-}
-
-async function updateStatusInline(managerKey, dateStr, selectEl) {
-    const type = selectEl.value;
-    if (!db[managerKey].status) db[managerKey].status = {};
-    
-    if (type === 'none') {
-        db[managerKey].status[dateStr] = { type: 'none', comment: '' };
-    } else {
-        const oldComment = db[managerKey].status[dateStr] ? db[managerKey].status[dateStr].comment : '';
-        db[managerKey].status[dateStr] = { type, comment: oldComment };
-    }
-    
-    selectEl.className = `inline-status-select status-select-${type}`;
-    
-    await saveSupportData(managerKey);
-}
-
-function openStatusCommentModal(managerKey, dateStr) {
-    document.getElementById('statusManagerKey').value = managerKey;
-    document.getElementById('statusDate').value = dateStr;
-    
-    const dateObj = new Date(dateStr);
-    const dayName = DAY_NAMES[dateObj.getDay()];
-    const displayDate = `${String(dateObj.getDate()).padStart(2, '0')}.${String(dateObj.getMonth() + 1).padStart(2, '0')}.${dateObj.getFullYear()} (${dayName})`;
-    
-    document.getElementById('statusManagerName').value = managerNames[managerKey];
-    document.getElementById('statusDateDisplay').value = displayDate;
-    
-    const statusObj = db[managerKey].status[dateStr] || { type: 'none' };
-    const currentType = statusObj.type || 'none';
-    
-    let typeLabel = '—';
-    if (currentType === 'office') typeLabel = '🟢 В офисе';
-    else if (currentType === 'vacation') typeLabel = '🏖 Отпуск';
-    else if (currentType === 'sick') typeLabel = '🤒 Больничный';
-    else if (currentType === 'unpaid') typeLabel = '🟡 За свой счет';
-    else if (currentType === 'remote') typeLabel = '🏠 На удаленке';
-    else if (currentType === 'holiday') typeLabel = '🎉 Гос выходной';
-    
-    document.getElementById('statusTypeDisplay').value = typeLabel;
-    document.getElementById('statusComment').value = statusObj.comment || '';
-    
-    bootstrap.Modal.getOrCreateInstance(document.getElementById('statusModal')).show();
-}
-
-async function saveStatusComment() {
-    const managerKey = document.getElementById('statusManagerKey').value;
-    const dateStr = document.getElementById('statusDate').value;
-    const comment = document.getElementById('statusComment').value.trim();
-    
-    if (!db[managerKey].status) db[managerKey].status = {};
-    
-    if (!db[managerKey].status[dateStr]) {
-        const dateObj = new Date(dateStr);
-        const dayOfWeek = dateObj.getDay();
-        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
-        const type = isWeekend ? 'none' : 'office';
-        db[managerKey].status[dateStr] = { type, comment };
-    } else {
-        db[managerKey].status[dateStr].comment = comment;
-    }
-    
-    await saveSupportData(managerKey);
-    renderWelcomeStatuses();
-    bootstrap.Modal.getInstance(document.getElementById('statusModal')).hide();
-}
-
-// Автообновление календаря при смене дня
-let currentDay = new Date().getDate();
-setInterval(() => {
-    const now = new Date();
-    if (now.getDate() !== currentDay) {
-        currentDay = now.getDate();
-        renderWelcomeStatuses();
-    }
-}, 60000); // Проверка каждую минуту
-
-/* ====================================================================
-   НАВИГАЦИЯ (ВХОД И ВЫХОД)
-   ==================================================================== */
-function enterSystem(managerKey) {
-    document.getElementById('welcomeScreen').style.display = 'none';
-    document.querySelector('.sidebar').style.display = 'flex';
-    document.getElementById('mainContent').style.display = 'block';
-    switchManager(managerKey);
-}
-
-function goHome() {
-    document.querySelector('.sidebar').style.display = 'none';
-    document.getElementById('mainContent').style.display = 'none';
-    document.getElementById('welcomeScreen').style.display = 'flex';
-    document.querySelectorAll('.manager-btn').forEach(el => el.classList.remove('active'));
-}
-
-/* ИНИЦИАЛИЗАЦИЯ */
-document.getElementById('directionOptions').innerHTML = DIRECTIONS.map(d => `<option value="${escapeHtml(d)}"></option>`).join('');
-(async () => {
-    await loadData();
-    await loadSupportData();
-    showPage('mainMenu');
-})();
-
-// Экспорт функций
-Object.assign(window, {
-    showPage, openClientModal, moveClientToStage, openImportModal, exportToExcel, importFromExcel, importRevenueFromExcel,
-    addEventFromModal, deleteEventFromModal, addCommentFromModal, deleteCommentFromModal,
-    saveClient, deleteClient, confirmDropMove, cancelDropMove, renderBoard, 
-    deleteAllInStage, updateSalesPlan, switchManager, addFunnelRow, deleteFunnelRow, updateFunnel, updateFunnelStatus,
-    addReportRow, deleteReportRow, updateReport, importSupportData, updateSupportSalesPlan,
-    enterSystem, goHome, updateRevenueClient, moveToKanban, deleteClientById,
-    updateStatusInline, openStatusCommentModal, saveStatusComment, addTableRow, updateTableClient,
-    importTableFromExcel, exportTableToExcel, deleteAllTableClients
 });
 </script>
 </body>
