@@ -86,29 +86,28 @@
         .status-board h4 { font-size: 1.1rem; font-weight: 600; margin-bottom: 15px; border-bottom: 1px solid var(--n-border); padding-bottom: 10px; }
         
         .status-table { width: 100%; border-collapse: collapse; }
-        .status-table th, .status-table td { text-align: center; padding: 6px; border: 1px solid var(--n-border); font-size: 0.9rem; }
+        .status-table th, .status-table td { text-align: center; padding: 6px; border: 1px solid var(--n-border); font-size: 0.9rem; vertical-align: middle; }
         .status-table th { background: var(--bg-sidebar); font-weight: 600; color: var(--n-text); position: sticky; top: 0; z-index: 10; }
-        .status-table .date-col { text-align: left; font-weight: 500; white-space: nowrap; background: #fbfbfa; }
+        .status-table .date-col { text-align: center; font-weight: 500; white-space: nowrap; background: #fbfbfa; width: 100px; }
         .status-table .weekend-row .date-col { color: var(--n-red); }
         
         /* Стили для inline-выбора статуса в календаре */
         .inline-status-select {
             appearance: none;
-            border: 1px solid transparent;
-            background: transparent;
+            border: none;
             font-size: 0.85rem;
             font-weight: 500;
-            padding: 4px 8px;
+            padding: 6px 12px;
             border-radius: 6px;
             cursor: pointer;
             text-align: center;
             text-align-last: center;
             width: 100%;
             outline: none;
-            transition: border-color 0.2s, background 0.2s;
+            transition: opacity 0.2s;
         }
-        .inline-status-select:hover, .inline-status-select:focus {
-            border-color: var(--n-border);
+        .inline-status-select:hover {
+            opacity: 0.8;
         }
         .status-select-office { background: var(--green-bg); color: var(--green-text); }
         .status-select-vacation { background: var(--blue-bg); color: var(--blue-text); }
@@ -116,10 +115,10 @@
         .status-select-unpaid { background: var(--yellow-bg); color: var(--yellow-text); }
         .status-select-remote { background: var(--purple-bg); color: var(--purple-text); }
         .status-select-holiday { background: var(--orange-bg); color: var(--orange-text); }
-        .status-select-none { color: var(--n-text-light); }
+        .status-select-none { background: transparent; color: var(--n-text-light); cursor: pointer; }
 
         .comment-icon {
-            font-size: 0.9rem; color: var(--n-blue); cursor: pointer; margin-left: 4px;
+            font-size: 1rem; color: var(--n-blue); cursor: pointer;
             transition: color 0.2s;
         }
         .comment-icon:hover { color: #1a6bc4; }
@@ -776,12 +775,12 @@
     </div>
 </div>
 
-<!-- МОДАЛКА СТАТУСА И ЧАСОВ -->
+<!-- МОДАЛКА СТАТУСА (ДЛЯ КОММЕНТАРИЕВ) -->
 <div class="modal fade" id="statusModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-sm">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-clock-history"></i> Отработка часов</h5>
+                <h5 class="modal-title"><i class="bi bi-chat-left-text"></i> Комментарий</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -796,21 +795,6 @@
                     <label class="form-label fw-bold text-muted small">Дата</label>
                     <input type="text" id="statusDateDisplay" class="form-control" readonly style="background-color: var(--bg-sidebar);">
                 </div>
-                <div class="mb-3">
-                    <label class="form-label fw-bold text-muted small">Текущий статус</label>
-                    <div class="form-control" id="statusTypeDisplay" readonly style="background-color: var(--bg-sidebar);">Не выбран</div>
-                </div>
-                
-                <!-- БЛОК ДЛЯ ПРОПУЩЕННЫХ ЧАСОВ -->
-                <div class="mb-3 form-check">
-                    <input class="form-check-input" type="checkbox" id="statusFinishedEarly" onchange="document.getElementById('missedHoursBlock').style.display = this.checked ? 'block' : 'none';">
-                    <label class="form-check-label fw-semibold text-danger" for="statusFinishedEarly">Завершил день заранее</label>
-                </div>
-                <div class="mb-3" id="missedHoursBlock" style="display:none;">
-                    <label class="form-label fw-bold text-muted small">Пропущено часов</label>
-                    <input type="number" id="statusMissedHours" class="form-control form-control-sm" min="0" step="0.5" placeholder="Например: 2.5">
-                </div>
-                
                 <div class="mb-3">
                     <label class="form-label fw-bold text-muted small">Комментарий</label>
                     <input type="text" id="statusComment" class="form-control form-control-sm" placeholder="Детали (по желанию)">
@@ -947,7 +931,7 @@ function updateMissedHoursDisplay() {
     }
 }
 
-// Инлайн обновление статуса (прямо в таблице)
+// Инлайн обновление статуса
 async function updateStatusInline(managerKey, dateStr, newStatus) {
     const existing = statusesData.find(s => s.manager_key === managerKey && s.date === dateStr);
     const missed = existing ? existing.missed_hours : 0;
@@ -957,6 +941,36 @@ async function updateStatusInline(managerKey, dateStr, newStatus) {
         manager_key: managerKey,
         date: dateStr,
         status_type: newStatus,
+        comment: comment,
+        missed_hours: missed
+    }, { onConflict: 'manager_key,date' });
+
+    if (error) {
+        alert('Ошибка сохранения: ' + error.message);
+    } else {
+        await loadStatuses();
+        renderWelcomeStatuses();
+    }
+}
+
+// Инлайн обновление пропущенных часов
+async function updateMissedHoursInline(managerKey, dateStr, hours) {
+    const missed = parseFloat(hours) || 0;
+    const existing = statusesData.find(s => s.manager_key === managerKey && s.date === dateStr);
+    
+    let statusType = existing ? existing.status_type : '';
+    if (!statusType) {
+        const dateObj = new Date(dateStr);
+        const dayOfWeek = dateObj.getDay();
+        if (dayOfWeek >= 1 && dayOfWeek <= 5) statusType = 'В офисе';
+    }
+    
+    const comment = existing ? existing.comment : '';
+
+    const { error } = await supabaseClient.from('manager_statuses').upsert({
+        manager_key: managerKey,
+        date: dateStr,
+        status_type: statusType,
         comment: comment,
         missed_hours: missed
     }, { onConflict: 'manager_key,date' });
@@ -980,17 +994,9 @@ function openStatusModal(managerKey, dateStr) {
     const existing = statusesData.find(s => s.manager_key === managerKey && s.date === dateStr);
     
     if (existing) {
-        document.getElementById('statusTypeDisplay').textContent = existing.status_type || 'Не выбран';
         document.getElementById('statusComment').value = existing.comment || '';
-        document.getElementById('statusFinishedEarly').checked = (existing.missed_hours > 0);
-        document.getElementById('statusMissedHours').value = existing.missed_hours > 0 ? existing.missed_hours : '';
-        document.getElementById('missedHoursBlock').style.display = existing.missed_hours > 0 ? 'block' : 'none';
     } else {
-        document.getElementById('statusTypeDisplay').textContent = 'Не выбран';
         document.getElementById('statusComment').value = '';
-        document.getElementById('statusFinishedEarly').checked = false;
-        document.getElementById('statusMissedHours').value = '';
-        document.getElementById('missedHoursBlock').style.display = 'none';
     }
     
     bootstrap.Modal.getOrCreateInstance(document.getElementById('statusModal')).show();
@@ -999,18 +1005,21 @@ function openStatusModal(managerKey, dateStr) {
 async function saveStatusComment() {
     const managerKey = document.getElementById('statusManagerKey').value;
     const dateStr = document.getElementById('statusDate').value;
-    const type = document.getElementById('statusTypeDisplay').textContent; 
     const comment = document.getElementById('statusComment').value;
     
-    const finishedEarly = document.getElementById('statusFinishedEarly').checked;
-    const missedHours = finishedEarly ? (parseFloat(document.getElementById('statusMissedHours').value) || 0) : 0;
-
-    const finalType = type === 'Не выбран' ? '' : type;
+    const existing = statusesData.find(s => s.manager_key === managerKey && s.date === dateStr);
+    let statusType = existing ? existing.status_type : '';
+    if (!statusType) {
+        const dateObj = new Date(dateStr);
+        const dayOfWeek = dateObj.getDay();
+        if (dayOfWeek >= 1 && dayOfWeek <= 5) statusType = 'В офисе';
+    }
+    const missedHours = existing ? existing.missed_hours : 0;
 
     const { error } = await supabaseClient.from('manager_statuses').upsert({
         manager_key: managerKey,
         date: dateStr,
-        status_type: finalType,
+        status_type: statusType,
         comment: comment,
         missed_hours: missedHours
     }, { onConflict: 'manager_key,date' });
@@ -1042,42 +1051,54 @@ function renderWelcomeStatuses() {
     for (let d = 1; d <= daysInMonth; d++) {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
         const dateObj = new Date(year, month, d);
-        const dayOfWeek = dateObj.getDay();
+        const dayOfWeek = dateObj.getDay(); // 0 = Вс, 1 = Пн ... 6 = Сб
         const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
         const rowClass = isWeekend ? 'weekend-row' : '';
         
-        html += `<tr class="${rowClass}"><td class="date-col">${d} ${DAY_NAMES[dayOfWeek]}</td>`;
+        const displayDate = `${String(d).padStart(2, '0')}.${String(month + 1).padStart(2, '0')} (${DAY_NAMES[dayOfWeek]})`;
+        
+        html += `<tr class="${rowClass}"><td class="date-col">${displayDate}</td>`;
         
         for (let m in managerNames) {
             const status = statusesData.find(s => s.manager_key === m && s.date === dateStr) || {};
-            const statusType = status.status_type || '';
+            
+            let statusType = status.status_type || '';
+            if (!status.status_type && dayOfWeek >= 1 && dayOfWeek <= 5) {
+                statusType = 'В офисе';
+            }
+
             const missed = status.missed_hours || 0;
             
             let bgClass = 'status-select-none';
             if (statusType === 'В офисе') bgClass = 'status-select-office';
             else if (statusType === 'На удаленке') bgClass = 'status-select-remote';
-            else if (statusType === 'Отпуск') bgClass = 'status-select-vacation';
             else if (statusType === 'Больничный') bgClass = 'status-select-sick';
+            else if (statusType === 'Гос выходной') bgClass = 'status-select-holiday';
+            else if (statusType === 'Отпуск') bgClass = 'status-select-vacation';
             else if (statusType === 'За свой счет') bgClass = 'status-select-unpaid';
             
             let optionsHtml = `
-                <option value="">—</option>
-                <option value="В офисе" ${statusType === 'В офисе' ? 'selected' : ''}>В офисе</option>
-                <option value="На удаленке" ${statusType === 'На удаленке' ? 'selected' : ''}>На удаленке</option>
-                <option value="Отпуск" ${statusType === 'Отпуск' ? 'selected' : ''}>Отпуск</option>
-                <option value="Больничный" ${statusType === 'Больничный' ? 'selected' : ''}>Больничный</option>
-                <option value="За свой счет" ${statusType === 'За свой счет' ? 'selected' : ''}>За свой счет</option>
+                <option value="" ${statusType === '' ? 'selected' : ''}>—</option>
+                <option value="В офисе" ${statusType === 'В офисе' ? 'selected' : ''}>🟢 В офисе</option>
+                <option value="На удаленке" ${statusType === 'На удаленке' ? 'selected' : ''}>🏠 На удаленке</option>
+                <option value="Больничный" ${statusType === 'Больничный' ? 'selected' : ''}>🤒 Больничный</option>
+                <option value="Гос выходной" ${statusType === 'Гос выходной' ? 'selected' : ''}>🎉 Гос выходной</option>
+                <option value="Отпуск" ${statusType === 'Отпуск' ? 'selected' : ''}>🌴 Отпуск</option>
+                <option value="За свой счет" ${statusType === 'За свой счет' ? 'selected' : ''}>💸 За свой счет</option>
             `;
 
-            let missedBadge = missed > 0 ? `<span class="badge bg-danger ms-1" title="Пропущено часов">-${missed}ч</span>` : '';
-
             html += `<td>
-                <div class="d-flex align-items-center justify-content-center gap-1">
+                <div class="d-flex flex-column align-items-center justify-content-center">
                     <select class="inline-status-select ${bgClass}" onchange="updateStatusInline('${m}', '${dateStr}', this.value)">
                         ${optionsHtml}
                     </select>
-                    ${missedBadge}
-                    <i class="bi bi-pencil-square comment-icon" onclick="openStatusModal('${m}', '${dateStr}')" title="Указать пропущенные часы / Комментарий"></i>
+                    <div class="d-flex align-items-center mt-1 gap-1">
+                        <input type="number" class="form-control form-control-sm text-center" style="width: 60px; height: 22px; padding: 0; font-size: 0.75rem; border-color: #e9e9e7;" 
+                               value="${missed > 0 ? missed : ''}" placeholder="0" min="0" step="0.5" 
+                               onchange="updateMissedHoursInline('${m}', '${dateStr}', this.value)" title="Пропущено часов">
+                        <span style="font-size: 0.7rem; color: var(--n-text-light);">ч.</span>
+                        <i class="bi bi-pencil-square comment-icon ms-1" onclick="openStatusModal('${m}', '${dateStr}')" title="Комментарий"></i>
+                    </div>
                 </div>
             </td>`;
         }
